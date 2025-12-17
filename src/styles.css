@@ -1,0 +1,15 @@
+/* Angular Material Typography */
+@import "@angular/material/prebuilt-themes/indigo-pink.css";
+
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
