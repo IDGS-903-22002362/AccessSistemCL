@@ -255,7 +255,7 @@ import { UsersService } from '../../core/services/users.service';
                   mat-raised-button
                   color="primary"
                   class="!bg-gradient-to-r !from-green-600 !to-green-700 hover:!from-green-700 hover:!to-green-800 !text-white !font-medium !px-8 !py-3 !rounded-lg !shadow-lg transition-all duration-200 transform hover:scale-105"
-                  (click)="addManualUser()" 
+                  (click)="addManualUser()"
                 >
                   <mat-icon class="mr-2">add_circle</mat-icon>
                   Agregar Usuario a la Lista

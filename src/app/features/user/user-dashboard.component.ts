@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -8,6 +8,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersAccesService, UserAccess } from '../../core/services/usersSolicitud.service';
+import { JornadaActivaService, JornadaActiva } from '../../core/services/jornadas.service';
+import { take } from 'rxjs/operators';
+
 
 
 @Component({
@@ -76,47 +79,71 @@ import { UsersAccesService, UserAccess } from '../../core/services/usersSolicitu
 >
   Registrar usuarios
 </button>
-<!-- El modal completo, mostrado condicionalmente con *ngIf -->
-<div *ngIf="isOpen" class="fixed inset-0 size-auto max-h-none max-w-none overflow-y-auto bg-transparent backdrop:bg-transparent">
-  <!-- Fondo oscuro (backdrop) -->
-  <div class="fixed inset-0 bg-gray-900/50 transition-opacity opacity-100"></div>
+<!-- Card Jornada Activa -->
+<mat-card
+  *ngIf="jornadaActiva"
+  class="mb-8 shadow-xl rounded-2xl overflow-hidden border border-gray-100"
+>
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex items-center justify-between">
+    <div class="text-white">
+      <h2 class="text-xl font-bold">
+        Jornada {{ jornadaActiva.jornada }}
+      </h2>
+      <p class="text-sm opacity-90">
+        {{ jornadaActiva.fecha }} · {{ jornadaActiva.hora }}
+      </p>
+    </div>
 
-  <!-- Contenedor principal para centrar el diálogo -->
-  <div tabindex="0" class="flex min-h-full items-end justify-center p-4 text-center focus:outline-none sm:items-center sm:p-0">
-    <!-- Panel del diálogo -->
-    <div class="relative transform overflow-hidden rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all sm:my-8 sm:w-full sm:max-w-lg">
-      
-      <!-- Contenido principal -->
-      <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-        <div class="sm:flex sm:items-start">
-          <!-- Icono -->
-          <div class="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-red-500/10 sm:mx-0 sm:size-10">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 text-red-400">
-              <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </div>
-          
-          <!-- Título y descripción -->
-          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-            <h3 id="dialog-title" class="text-base font-semibold text-white">Deactivate account</h3>
-            <div class="mt-2">
-              <p class="text-sm text-gray-400">Are you sure you want to deactivate your account? All of your data will be permanently removed. This action cannot be undone.</p>
-            </div>
-          </div>
-        </div>
+    <span
+      class="bg-white text-green-700 px-4 py-1 rounded-full text-sm font-semibold flex items-center"
+    >
+      <mat-icon class="mr-1 text-sm">sports_soccer</mat-icon>
+      Partido Activo
+    </span>
+  </div>
+
+  <!-- Content -->
+  <mat-card-content class="p-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+
+      <!-- Local -->
+      <div class="text-center">
+        <p class="text-gray-500 text-sm mb-1">Local</p>
+        <h3 class="text-2xl font-bold text-gray-900">
+          {{ jornadaActiva.equipo_local }}
+        </h3>
       </div>
-      
-      <!-- Pie de página con botones de acción -->
-      <div class="bg-gray-700/25 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-        <!-- Botón Deactivate -->
-        <button type="button" (click)="onDeactivate()" class="inline-flex w-full justify-center rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400 sm:ml-3 sm:w-auto">Deactivate</button>
-        
-        <!-- Botón Cancel -->
-        <button type="button" (click)="onClose()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20 sm:mt-0 sm:w-auto">Cancel</button>
+
+      <!-- VS -->
+      <div class="text-center">
+        <span class="text-3xl font-extrabold text-gray-400">VS</span>
+      </div>
+
+      <!-- Visitante -->
+      <div class="text-center">
+        <p class="text-gray-500 text-sm mb-1">Visitante</p>
+        <h3 class="text-2xl font-bold text-gray-900">
+          {{ jornadaActiva.equipo_visitante }}
+        </h3>
+      </div>
+
+    </div>
+
+    <!-- Info -->
+    <div class="mt-6 flex flex-col sm:flex-row justify-between items-center bg-gray-50 rounded-xl p-4">
+      <div class="flex items-center text-gray-700 mb-2 sm:mb-0">
+        <mat-icon class="mr-2 text-green-600">location_on</mat-icon>
+        <span class="font-medium">{{ jornadaActiva.estadio }}</span>
+      </div>
+
+      <div class="flex items-center text-gray-700">
+        <mat-icon class="mr-2 text-green-600">schedule</mat-icon>
+        <span>{{ jornadaActiva.hora }}</span>
       </div>
     </div>
-  </div>
-</div>
+  </mat-card-content>
+</mat-card>
 
 
 
@@ -191,19 +218,6 @@ export class UserDashboardComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
-  @Input() isOpen = false;
-  @Output() close = new EventEmitter<void>();
-  @Output() deactivate = new EventEmitter<void>();
-
-  onClose() {
-    this.isOpen = false;
-    this.close.emit();
-  }
-
-  onDeactivate() {
-    this.isOpen = false;
-    this.deactivate.emit();
-  }
 
   displayedColumns: string[] = [
     'nombre',
@@ -215,10 +229,29 @@ export class UserDashboardComponent {
 
   dataSource: any[] = []; // Placeholder vacío
 
-  // 👉 CONTADORES
+  //contadores
   totalUsuarios = 0;
   usuariosAprobados = 0;
   usuariosRechazados = 0;
+  private jornadaService = inject(JornadaActivaService);
+
+  jornadaActiva?: JornadaActiva;
+
+
+
+  loadJornadaActiva(): void {
+    this.jornadaService.getJornadasActivas$().pipe(take(1)).subscribe({
+      next: jornadas => {
+        console.log('Jornadas activas:', jornadas);
+        this.jornadaActiva = jornadas.length > 0 ? jornadas[0] : undefined;
+      },
+      error: err => console.error(err)
+    });
+  }
+
+
+
+
 
   async loadUsers(): Promise<void> {
     try {
@@ -246,7 +279,10 @@ export class UserDashboardComponent {
 
   ngOnInit() {
     this.loadUsers();
+    this.loadJornadaActiva();
   }
+
+
   goToRegistro() {
     this.router.navigate(['/user/registro']);
   }
