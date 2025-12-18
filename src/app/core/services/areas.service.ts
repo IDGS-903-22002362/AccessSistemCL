@@ -9,6 +9,8 @@ import {
   deleteDoc,
   Timestamp,
 } from '@angular/fire/firestore';
+import { documentId } from '@angular/fire/firestore';
+import { query, where } from 'firebase/firestore';
 
 export interface Area {
   id?: string;
@@ -57,6 +59,29 @@ export class AreasService {
       })) as Area[];
     } catch (error) {
       console.error('Error obteniendo áreas:', error);
+      throw error;
+    }
+  }
+
+  async getAreasByIds(areaIds: string[]): Promise<Area[]> {
+    if (!areaIds || areaIds.length === 0) return [];
+
+    try {
+      const areasCollection = collection(this.firestore, this.collectionName);
+
+      const q = query(
+        areasCollection,
+        where(documentId(), 'in', areaIds.slice(0, 10)) // Firestore máx 10
+      );
+
+      const snapshot = await getDocs(q);
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Area[];
+    } catch (error) {
+      console.error('Error obteniendo áreas por IDs:', error);
       throw error;
     }
   }

@@ -17,11 +17,23 @@ export const routes: Routes = [
   },
   {
     path: 'user',
-    loadComponent: () =>
-      import('./features/user/user-dashboard.component').then(
-        (m) => m.UserDashboardComponent
-      ),
     canActivate: [authGuard, registranteGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/user/user-dashboard.component').then(
+            (m) => m.UserDashboardComponent
+          ),
+      },
+      {
+        path: 'registro',
+        loadComponent: () =>
+          import('./features/user/user-form.component').then(
+            (m) => m.UserFormComponent
+          ),
+      },
+    ],
   },
   {
     path: 'admin-area',
