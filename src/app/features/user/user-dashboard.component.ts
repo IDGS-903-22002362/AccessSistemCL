@@ -61,6 +61,14 @@ import { AuthService } from '../../core/services/auth.service';
             </mat-card-content>
           </mat-card>
         </div>
+        <button
+  mat-raised-button
+  color="primary"
+  (click)="goToRegistro()"
+>
+  Registrar usuarios
+</button>
+
 
         <mat-card>
           <mat-card-header>
@@ -127,6 +135,10 @@ export class UserDashboardComponent {
 
   displayedColumns: string[] = ['id', 'fecha', 'tipo', 'estado'];
   dataSource: any[] = []; // Placeholder vacío
+  goToRegistro() {
+    this.router.navigate(['/user/registro']);
+  }
+
 
   async logout(): Promise<void> {
     try {
