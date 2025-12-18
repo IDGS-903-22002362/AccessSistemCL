@@ -15,9 +15,11 @@ import {
 export interface User {
   id?: string;
   email: string;
+  apodo?: string;
   role: string;
   empresaId?: string;
   areaIds?: string[];
+  funcionIds?: string[];
   createdAt?: any;
   updatedAt?: any;
 }

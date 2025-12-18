@@ -26,15 +26,10 @@ export class AuthAdminService {
 
   /**
    * Crea un usuario en Firebase Auth
+   * Si el email ya existe, lanza el error original de Firebase para ser manejado
    */
   async createUser(email: string, password: string): Promise<any> {
     try {
-      // Verificar si el email ya existe
-      const exists = await this.emailExists(email);
-      if (exists) {
-        throw new Error('El email ya está registrado');
-      }
-
       const userCredential = await createUserWithEmailAndPassword(
         this.auth,
         email,
@@ -42,9 +37,7 @@ export class AuthAdminService {
       );
       return userCredential.user;
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        throw new Error('El email ya está registrado');
-      }
+      // Mantener el error original con su código para manejo posterior
       throw error;
     }
   }
