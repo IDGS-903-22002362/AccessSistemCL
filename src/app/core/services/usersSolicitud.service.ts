@@ -22,6 +22,7 @@ export interface UserAccess {
     email: string;
     empresaId: string;
     areaId: string;
+    registrantEmail?: string;
     estatus: 'pendiente' | 'aprobado' | 'rechazado';
     createdAt?: any;
 }
@@ -36,11 +37,12 @@ export class UsersAccesService {
     /**
      * Crear usuario en Firestore
      */
-    async createUser(userData: Omit<UserAccess, 'id'>): Promise<string> {
+    async createUser(userData: Omit<UserAccess, 'id' | 'registrantEmail'>, registrantEmail: string): Promise<string> {
         try {
             const usersCollection = collection(this.firestore, this.collectionName);
             const docRef = await addDoc(usersCollection, {
                 ...userData,
+                registrantEmail,
                 createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),
             });
@@ -96,7 +98,6 @@ export class UsersAccesService {
      * Obtener rol del usuario actual por email
      */
 
-
     /**
      * Obtener datos completos del usuario por email
      */
@@ -104,11 +105,13 @@ export class UsersAccesService {
         return this.getUserByEmail(email);
     }
 
-
     /**
      * Actualizar usuario
      */
-    async updateUser(userId: string, userData: Partial<UserAccess>): Promise<void> {
+    async updateUser(
+        userId: string,
+        userData: Partial<UserAccess>
+    ): Promise<void> {
         try {
             const userDoc = doc(this.firestore, this.collectionName, userId);
             await updateDoc(userDoc, {
@@ -133,4 +136,36 @@ export class UsersAccesService {
             throw error;
         }
     }
+
+    async getUsersByRegistrant(email: string): Promise<UserAccess[]> {
+        const usersCollection = collection(this.firestore, this.collectionName);
+        const q = query(usersCollection, where('registrantEmail', '==', email));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as UserAccess[];
+    }
+
+
+    async getUsersByRegistrantAndStatus(
+        email: string,
+        estatus: 'pendiente' | 'aprobado' | 'rechazado'
+    ): Promise<UserAccess[]> {
+        const usersCollection = collection(this.firestore, this.collectionName);
+        const q = query(
+            usersCollection,
+            where('registrantEmail', '==', email),
+            where('estatus', '==', estatus)
+        );
+
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as UserAccess[];
+    }
+
 }
+

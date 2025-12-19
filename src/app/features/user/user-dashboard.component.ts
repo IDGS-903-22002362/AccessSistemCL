@@ -7,10 +7,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { AuthService } from '../../core/services/auth.service';
-import { UsersAccesService, UserAccess } from '../../core/services/usersSolicitud.service';
-import { JornadaActivaService, JornadaActiva } from '../../core/services/jornadas.service';
+import { UsersService } from '../../core/services/users.service';
+import {
+  UsersAccesService,
+  UserAccess,
+} from '../../core/services/usersSolicitud.service';
+import {
+  JornadaActivaService,
+  JornadaActiva,
+} from '../../core/services/jornadas.service';
 import { take } from 'rxjs/operators';
-
+import { User } from '@angular/fire/auth';
 
 
 @Component({
@@ -26,13 +33,26 @@ import { take } from 'rxjs/operators';
   ],
   template: `
     <div class="min-h-screen bg-gray-50">
-      <mat-toolbar color="primary" class="shadow-md">
-        <span class="text-xl font-semibold">Dashboard Usuario</span>
+      <mat-toolbar style="background-color:#007A53" class="shadow-md">
+        <div class="flex items-center gap-3 text-white">
+          <img
+            src="images/leon.png"
+            alt="Club León"
+            class="h-8 w-auto"
+          />
+          <span class="font-medium">
+            Bienvenido, {{ currentUserName }}
+          </span>
+        </div>
+
         <span class="flex-1"></span>
-        <button mat-icon-button (click)="logout()">
+
+        <button mat-icon-button (click)="logout()" class="text-white">
           <mat-icon>logout</mat-icon>
         </button>
       </mat-toolbar>
+
+
 
       <div class="container mx-auto p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -89,47 +109,47 @@ import { take } from 'rxjs/operators';
       </p>
     </div>
 
-    <span
-      class="bg-white text-green-700 px-4 py-1 rounded-full text-sm font-semibold flex items-center"
-    >
-      <mat-icon class="mr-1 text-sm">sports_soccer</mat-icon>
-      Partido Activo
-    </span>
-  </div>
+            <span
+              class="bg-white text-green-700 px-4 py-1 rounded-full text-sm font-semibold flex items-center"
+            >
+              <mat-icon class="mr-1 text-sm">sports_soccer</mat-icon>
+              Partido Activo
+            </span>
+          </div>
 
-  <!-- Content -->
-  <mat-card-content class="p-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+          <!-- Content -->
+          <mat-card-content class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+              <!-- Local -->
+              <div class="text-center">
+                <p class="text-gray-500 text-sm mb-1">Local</p>
+                <h3 class="text-2xl font-bold text-gray-900">
+                  {{ jornadaActiva.equipo_local }}
+                </h3>
+              </div>
 
-      <!-- Local -->
-      <div class="text-center">
-        <p class="text-gray-500 text-sm mb-1">Local</p>
-        <h3 class="text-2xl font-bold text-gray-900">
-          {{ jornadaActiva.equipo_local }}
-        </h3>
-      </div>
+              <!-- VS -->
+              <div class="text-center">
+                <span class="text-3xl font-extrabold text-gray-400">VS</span>
+              </div>
 
-      <!-- VS -->
-      <div class="text-center">
-        <span class="text-3xl font-extrabold text-gray-400">VS</span>
-      </div>
+              <!-- Visitante -->
+              <div class="text-center">
+                <p class="text-gray-500 text-sm mb-1">Visitante</p>
+                <h3 class="text-2xl font-bold text-gray-900">
+                  {{ jornadaActiva.equipo_visitante }}
+                </h3>
+              </div>
+            </div>
 
-      <!-- Visitante -->
-      <div class="text-center">
-        <p class="text-gray-500 text-sm mb-1">Visitante</p>
-        <h3 class="text-2xl font-bold text-gray-900">
-          {{ jornadaActiva.equipo_visitante }}
-        </h3>
-      </div>
-
-    </div>
-
-    <!-- Info -->
-    <div class="mt-6 flex flex-col sm:flex-row justify-between items-center bg-gray-50 rounded-xl p-4">
-      <div class="flex items-center text-gray-700 mb-2 sm:mb-0">
-        <mat-icon class="mr-2 text-green-600">location_on</mat-icon>
-        <span class="font-medium">{{ jornadaActiva.estadio }}</span>
-      </div>
+            <!-- Info -->
+            <div
+              class="mt-6 flex flex-col sm:flex-row justify-between items-center bg-gray-50 rounded-xl p-4"
+            >
+              <div class="flex items-center text-gray-700 mb-2 sm:mb-0">
+                <mat-icon class="mr-2 text-green-600">location_on</mat-icon>
+                <span class="font-medium">{{ jornadaActiva.estadio }}</span>
+              </div>
 
       <div class="flex items-center text-gray-700">
         <mat-icon class="mr-2 text-green-600">schedule</mat-icon>
@@ -151,12 +171,13 @@ import { take } from 'rxjs/operators';
 </mat-card>
 
 <button
-      mat-raised-button
-      color="primary"
-      (click)="goToRegistro()"
-    >
-      Registrar usuarios
-    </button>
+  mat-raised-button
+  style="background-color:#007A53; color: white;"
+  (click)="goToRegistro()"
+>
+  Registrar usuarios
+</button>
+
 
         <mat-card>
           <mat-card-header>
@@ -202,9 +223,11 @@ import { take } from 'rxjs/operators';
                 </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let row; columns: displayedColumns"
+                ></tr>
               </table>
-
 
               @if (dataSource.length === 0) {
               <div class="text-center py-8 text-gray-500">
@@ -229,6 +252,8 @@ export class UserDashboardComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
+  currentUserName = '';
+
 
   displayedColumns: string[] = [
     'nombre',
@@ -266,7 +291,15 @@ export class UserDashboardComponent {
 
   async loadUsers(): Promise<void> {
     try {
-      const users: UserAccess[] = await this.usersAccessService.getUsers();
+      const currentUser = this.authService.getCurrentUser();
+
+      if (!currentUser?.email) {
+        console.error('No hay usuario autenticado');
+        return;
+      }
+
+      const users: UserAccess[] =
+        await this.usersAccessService.getUsersByRegistrant(currentUser.email);
 
       // Tabla
       this.dataSource = users.map((user) => ({
@@ -278,9 +311,12 @@ export class UserDashboardComponent {
 
       // Contadores
       this.totalUsuarios = users.length;
-      this.usuariosAprobados = users.filter(u => u.estatus === 'aprobado').length;
-      this.usuariosRechazados = users.filter(u => u.estatus === 'rechazado').length;
-
+      this.usuariosAprobados = users.filter(
+        (u) => u.estatus === 'aprobado'
+      ).length;
+      this.usuariosRechazados = users.filter(
+        (u) => u.estatus === 'rechazado'
+      ).length;
     } catch (error) {
       console.error('Error cargando usuarios', error);
     }
@@ -288,10 +324,21 @@ export class UserDashboardComponent {
 
 
 
+
   ngOnInit() {
+    this.authService.user$.pipe(take(1)).subscribe(user => {
+      if (user) {
+        this.currentUserName =
+          user.displayName ||
+          user.email?.split('@')[0] || // apodo desde email
+          'Usuario';
+      }
+    });
+
     this.loadUsers();
     this.loadJornadaActiva();
   }
+
 
 
   goToRegistro() {
