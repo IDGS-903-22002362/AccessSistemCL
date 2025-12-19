@@ -99,7 +99,7 @@ import { User } from '@angular/fire/auth';
   class="mb-8 shadow-xl rounded-2xl overflow-hidden border border-gray-100"
 >
   <!-- Header -->
-  <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex items-center justify-between">
+  <div class="px-6 py-4 flex items-center justify-between" style="background-color:#007A53">
     <div class="text-white">
       <h2 class="text-xl font-bold">
         Jornada {{ jornadaActiva.jornada }}
@@ -166,14 +166,16 @@ import { User } from '@angular/fire/auth';
       Registrar usuarios
     </button>
 -->
+<div class="mt-8 flex justify-center">
+  <button
+    mat-raised-button
+    style="background-color:#007A53; color: white; padding: 0.75rem 2rem;"
+    (click)="goToRegistro()"
+  >
+    Registrar usuarios
+  </button>
+</div>
 
-<button
-  mat-raised-button
-  style="background-color:#007A53; color: white;"
-  (click)="goToRegistro()"
->
-  Registrar usuarios
-</button>
   </mat-card-content>
 </mat-card>
 
