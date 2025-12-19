@@ -1,12 +1,4 @@
-import {
-  Component,
-  inject,
-  ViewChild,
-  ElementRef,
-  AfterViewInit,
-  OnDestroy,
-  NgZone,
-} from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -39,7 +31,6 @@ import { RolesService } from '../../core/services/roles.service';
     MatProgressSpinnerModule,
   ],
   template: `
-    <canvas #bgCanvas class="bg-canvas"></canvas>
     <div
       class="login-container min-h-screen flex items-center justify-center p-4"
     >
@@ -66,7 +57,7 @@ import { RolesService } from '../../core/services/roles.service';
             (ngSubmit)="onSubmit()"
             class="flex flex-col gap-4"
           >
-            <mat-form-field appearance="outline" class="w-full">
+            <mat-form-field appearance="fill" class="w-full">
               <mat-label>Correo electrónico</mat-label>
               <mat-icon matIconPrefix>email</mat-icon>
               <input
@@ -83,7 +74,7 @@ import { RolesService } from '../../core/services/roles.service';
               }
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="w-full">
+            <mat-form-field appearance="fill" class="w-full">
               <mat-label>Contraseña</mat-label>
               <mat-icon matIconPrefix>lock</mat-icon>
               <input
@@ -146,25 +137,18 @@ import { RolesService } from '../../core/services/roles.service';
         overflow: hidden;
       }
 
-      .bg-canvas {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 0;
-        background: #ffffff;
-        pointer-events: none;
-      }
-
       .login-container {
         position: relative;
         z-index: 1;
+        background-image: url('/images/_NCS4410.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
       }
 
       .glass-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(8px);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.3);
       }
 
@@ -179,14 +163,11 @@ import { RolesService } from '../../core/services/roles.service';
     `,
   ],
 })
-export class LoginComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('bgCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
-
+export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private ngZone = inject(NgZone);
   private usersService = inject(UsersService);
   private rolesService = inject(RolesService);
 
@@ -196,118 +177,12 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
   loadingRole = false;
   errorMessage = '';
 
-  // Canvas config
-  private ctx!: CanvasRenderingContext2D;
-  private particles: Particle[] = [];
-  private animationId: number = 0;
-  private mouse = { x: -1000, y: -1000, radius: 150 };
-  private resizeObserver: ResizeObserver | null = null;
-
   constructor() {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
   }
-
-  ngAfterViewInit() {
-    this.ngZone.runOutsideAngular(() => {
-      // Small timeout to ensure DOM is ready
-      setTimeout(() => {
-        this.initCanvas();
-        this.initParticles();
-        this.animate();
-
-        window.addEventListener('mousemove', this.onMouseMove);
-
-        this.resizeObserver = new ResizeObserver(() => this.resize());
-        if (this.canvasRef?.nativeElement) {
-          this.resizeObserver.observe(this.canvasRef.nativeElement);
-        }
-        window.addEventListener('resize', this.onWindowResize);
-      }, 0);
-    });
-  }
-
-  ngOnDestroy() {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-    }
-    window.removeEventListener('mousemove', this.onMouseMove);
-    window.removeEventListener('resize', this.onWindowResize);
-    this.resizeObserver?.disconnect();
-  }
-
-  // --- Animation Logic ---
-
-  private onMouseMove = (e: MouseEvent) => {
-    this.mouse.x = e.clientX;
-    this.mouse.y = e.clientY;
-  };
-
-  private onWindowResize = () => {
-    this.resize();
-  };
-
-  private initCanvas() {
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    this.ctx = canvas.getContext('2d')!;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-
-  private resize() {
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    this.initParticles(); // Re-init particles on resize to fill screen
-  }
-
-  private initParticles() {
-    this.particles = [];
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    const numberOfParticles = (canvas.width * canvas.height) / 8000;
-
-    for (let i = 0; i < numberOfParticles; i++) {
-      const size = Math.random() * 2 + 1; // 1 to 3px
-      const x = Math.random() * (canvas.width - size * 2 - size * 2) + size * 2;
-      const y =
-        Math.random() * (canvas.height - size * 2 - size * 2) + size * 2;
-
-      let color = '#2D2926'; // Default black accent
-      const rand = Math.random();
-      if (rand < 0.6) {
-        color = '#007A53'; // 60% Green
-      } else if (rand < 0.9) {
-        color = '#FFC845'; // 30% Yellow
-      } else {
-        color = '#2D2926'; // 10% Black
-      }
-
-      const opacity = Math.random() * 0.35 + 0.25;
-
-      this.particles.push(new Particle(x, y, size, color, opacity));
-    }
-  }
-
-  private animate = () => {
-    if (!this.ctx || !this.canvasRef) return;
-    this.ctx.clearRect(
-      0,
-      0,
-      this.canvasRef.nativeElement.width,
-      this.canvasRef.nativeElement.height
-    );
-
-    for (let particle of this.particles) {
-      particle.update(this.mouse);
-      particle.draw(this.ctx);
-    }
-    this.animationId = requestAnimationFrame(this.animate);
-  };
 
   async onSubmit(): Promise<void> {
     if (this.loginForm.valid) {

@@ -24,7 +24,10 @@ export interface UserAccess {
   areaId: string;
   registrantEmail?: string;
   estatus: 'pendiente' | 'aprobado' | 'rechazado';
-  createdAt?: any;
+  reviewedBy?: string; // Email de quien aprobó/rechazó
+  reviewedAt?: any; // Timestamp de cuándo se aprobó/rechazó
+  createdAt?: any; // Timestamp de cuándo se creó
+  updatedAt?: any; // Timestamp de última actualización
 }
 
 @Injectable({
@@ -35,7 +38,7 @@ export class UsersAccesService {
   private collectionName = 'usersAccess';
 
   /**
-   * Crear usuario en Firestore
+   * Crear un nuevo usuario
    */
   async createUser(userData: Omit<UserAccess, 'id'>): Promise<string> {
     try {
