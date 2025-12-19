@@ -72,13 +72,7 @@ import { take } from 'rxjs/operators';
             </mat-card-content>
           </mat-card>
         </div>
-        <button
-  mat-raised-button
-  color="primary"
-  (click)="goToRegistro()"
->
-  Registrar usuarios
-</button>
+
 <!-- Card Jornada Activa -->
 <mat-card
   *ngIf="jornadaActiva"
@@ -142,10 +136,27 @@ import { take } from 'rxjs/operators';
         <span>{{ jornadaActiva.hora }}</span>
       </div>
     </div>
+    <!--
+    <button
+      ngIf="jornadaActiva"
+      mat-raised-button
+      color="primary"
+      (click)="goToRegistro()"
+    >
+      Registrar usuarios
+    </button>
+-->
+
   </mat-card-content>
 </mat-card>
 
-
+<button
+      mat-raised-button
+      color="primary"
+      (click)="goToRegistro()"
+    >
+      Registrar usuarios
+    </button>
 
         <mat-card>
           <mat-card-header>

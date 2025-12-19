@@ -58,6 +58,7 @@ import { UsersService } from '../../core/services/users.service';
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <p class="text-gray-700 mb-4">Seleccione el área organizacional para la cual desea registrar usuarios:</p>
+                <form [formGroup]="areaForm">
                 <mat-form-field appearance="outline" class="w-full">
                   <mat-label class="text-gray-600">Seleccionar Área</mat-label>
                   <mat-select formControlName="areaId" panelClass="rounded-lg">
@@ -72,6 +73,7 @@ import { UsersService } from '../../core/services/users.service';
                     El área seleccionada determina los permisos de los usuarios
                   </mat-hint>
                 </mat-form-field>
+                </form>
               </div>
               
               <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
@@ -106,7 +108,6 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-icon class="mr-2 align-middle">cloud_upload</mat-icon>
                 Importación Masiva
               </div>
-              <span class="text-sm font-normal bg-blue-500 px-3 py-1 rounded-full">Recomendado para múltiples usuarios</span>
             </mat-card-title>
           </div>
           <mat-card-content class="p-6">
@@ -180,9 +181,23 @@ import { UsersService } from '../../core/services/users.service';
             </div>
           </mat-card-content>
         </mat-card>
+        <div class="flex justify-center mb-6">
+  <button
+    mat-raised-button
+    color="accent"
+    class="!bg-green-600 !text-white !px-6 !py-3 !rounded-lg"
+    (click)="showManualForm = !showManualForm"
+  >
+    <mat-icon class="mr-2">
+      {{ showManualForm ? 'expand_less' : 'expand_more' }}
+    </mat-icon>
+    {{ showManualForm ? 'Ocultar Registro Manual' : 'Abrir Registro Manual' }}
+  </button>
+</div>
+
 
         <!-- Formulario manual -->
-        <mat-card class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+        <mat-card *ngIf="showManualForm" class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
           <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">person_add</mat-icon>
@@ -191,13 +206,13 @@ import { UsersService } from '../../core/services/users.service';
           </div>
           <br>
           <mat-card-content class="p-6">
-            <form [formGroup]="form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <form [formGroup]="manualForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <!-- Campo Nombre -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label class="text-gray-600">Nombre</mat-label>
                 <input matInput formControlName="nombre" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">person</mat-icon>
-                <mat-error *ngIf="form.get('nombre')?.invalid && form.get('nombre')?.touched">
+                <mat-error *ngIf="areaForm.get('nombre')?.invalid && areaForm.get('nombre')?.touched">
                   El nombre es requerido
                 </mat-error>
               </mat-form-field>
@@ -207,7 +222,7 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Apellido Paterno</mat-label>
                 <input matInput formControlName="apellidoPaterno" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">badge</mat-icon>
-                <mat-error *ngIf="form.get('apellidoPaterno')?.invalid && form.get('apellidoPaterno')?.touched">
+                <mat-error *ngIf="areaForm.get('apellidoPaterno')?.invalid && areaForm.get('apellidoPaterno')?.touched">
                   El apellido paterno es requerido
                 </mat-error>
               </mat-form-field>
@@ -224,7 +239,7 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Función/Cargo</mat-label>
                 <input matInput formControlName="funcion" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">work</mat-icon>
-                <mat-error *ngIf="form.get('funcion')?.invalid && form.get('funcion')?.touched">
+                <mat-error *ngIf="areaForm.get('funcion')?.invalid && areaForm.get('funcion')?.touched">
                   La función es requerida
                 </mat-error>
               </mat-form-field>
@@ -234,7 +249,7 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Teléfono</mat-label>
                 <input matInput formControlName="telefono" type="tel" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
-                <mat-error *ngIf="form.get('telefono')?.invalid && form.get('telefono')?.touched">
+                <mat-error *ngIf="areaForm.get('telefono')?.invalid && areaForm.get('telefono')?.touched">
                   El teléfono es requerido
                 </mat-error>
               </mat-form-field>
@@ -244,14 +259,15 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
-                <mat-error *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
-                  {{ form.get('email')?.hasError('required') ? 'El email es requerido' : 'Email inválido' }}
+                <mat-error *ngIf="areaForm.get('email')?.invalid && areaForm.get('email')?.touched">
+                  {{ areaForm.get('email')?.hasError('required') ? 'El email es requerido' : 'Email inválido' }}
                 </mat-error>
               </mat-form-field>
 
               <!-- Botón Agregar -->
               <div class="md:col-span-2 lg:col-span-3 flex justify-center mt-4">
                 <button
+                type="button"
                   mat-raised-button
                   color="primary"
                   class="!bg-gradient-to-r !from-green-600 !to-green-700 hover:!from-green-700 hover:!to-green-800 !text-white !font-medium !px-8 !py-3 !rounded-lg !shadow-lg transition-all duration-200 transform hover:scale-105"
@@ -442,6 +458,8 @@ export class UserFormComponent implements OnInit {
   private usersAccessService = inject(UsersAccesService);
   private authService = inject(AuthService);
   selectedFileName: string | null = null;
+  showManualForm = false;
+
 
 
   areas: Area[] = [];
@@ -456,15 +474,19 @@ export class UserFormComponent implements OnInit {
 
 
 
-  form: FormGroup = this.fb.group({
+  areaForm = this.fb.group({
     areaId: ['', Validators.required],
+  });
+
+  manualForm = this.fb.group({
     nombre: ['', Validators.required],
     apellidoPaterno: ['', Validators.required],
-    apellidoMaterno: ['', Validators.required],
+    apellidoMaterno: [''],
     funcion: ['', Validators.required],
     telefono: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
   });
+
   private usersService = inject(UsersService);
 
 
@@ -519,24 +541,49 @@ export class UserFormComponent implements OnInit {
 
   parseCSV(csv: string) {
     const lines = csv.split('\n').filter(l => l.trim());
-    const headers = lines[0].split(',');
+
+    const headers = lines[0]
+      .split(',')
+      .map(h => h.trim().replace('\r', ''));
 
     lines.slice(1).forEach(line => {
       const values = line.split(',');
       const user: any = {};
-      headers.forEach((h, i) => (user[h] = values[i]?.trim()));
+
+      headers.forEach((h, i) => {
+        user[h] = values[i]?.trim() || '';
+      });
+
       this.previewUsers.push(user);
     });
+
+    this.previewUsers = [...this.previewUsers];
   }
+
 
   addManualUser() {
-    const { areaId, ...user } = this.form.value;
+    if (this.manualForm.invalid) {
+      this.manualForm.markAllAsTouched();
+      return;
+    }
+
+    const user = this.manualForm.value;
+
     this.previewUsers.push(user);
-    this.form.reset({ areaId });
+    this.previewUsers = [...this.previewUsers];
+
+    this.manualForm.reset();
   }
 
+
+
   async submitAll() {
-    const areaId = this.form.value.areaId;
+    if (this.areaForm.invalid) {
+      alert('Seleccione un área');
+      return;
+    }
+
+    const areaId = this.areaForm.value.areaId;
 
     const authUser = this.authService.getCurrentUser();
 
@@ -557,7 +604,7 @@ export class UserFormComponent implements OnInit {
         ...u,
         areaId,
         empresaId: leaderData.empresaId,
-        estatus: false, // pendiente
+        estatus: 'pendiente', // pendiente
       });
     }
 
