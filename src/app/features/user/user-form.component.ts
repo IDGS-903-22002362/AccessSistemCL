@@ -1,8 +1,4 @@
-import {
-  Component,
-  inject,
-  OnInit,
-} from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -19,6 +15,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AreasService, Area } from '../../core/services/areas.service';
+import {
+  FuncionesService,
+  Funcion,
+} from '../../core/services/funciones.service';
 import { UsersAccesService } from '../../core/services/usersSolicitud.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService } from '../../core/services/users.service';
@@ -42,12 +42,18 @@ import { UsersService } from '../../core/services/users.service';
       <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestión de Usuarios</h1>
-          <p class="text-gray-600">Registro y administración de usuarios por área organizacional</p>
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            Gestión de Usuarios
+          </h1>
+          <p class="text-gray-600">
+            Registro y administración de usuarios por área organizacional
+          </p>
         </div>
 
         <!-- Sección de selección de área -->
-        <mat-card class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+        <mat-card
+          class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
           <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">group</mat-icon>
@@ -57,11 +63,18 @@ import { UsersService } from '../../core/services/users.service';
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
-                <p class="text-gray-700 mb-4">Seleccione el área organizacional para la cual desea registrar usuarios:</p>
+                <p class="text-gray-700 mb-4">
+                  Seleccione el área organizacional para la cual desea registrar
+                  usuarios:
+                </p>
                 <mat-form-field appearance="outline" class="w-full">
                   <mat-label class="text-gray-600">Seleccionar Área</mat-label>
                   <mat-select formControlName="areaId" panelClass="rounded-lg">
-                    <mat-option *ngFor="let area of areas" [value]="area.id" class="hover:bg-blue-50">
+                    <mat-option
+                      *ngFor="let area of areas"
+                      [value]="area.id"
+                      class="hover:bg-blue-50"
+                    >
                       <div class="flex items-center">
                         <span>{{ area.nombre }}</span>
                       </div>
@@ -73,7 +86,7 @@ import { UsersService } from '../../core/services/users.service';
                   </mat-hint>
                 </mat-form-field>
               </div>
-              
+
               <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
                 <h3 class="font-semibold text-blue-800 mb-3 flex items-center">
                   <mat-icon class="mr-2">lightbulb</mat-icon>
@@ -81,16 +94,31 @@ import { UsersService } from '../../core/services/users.service';
                 </h3>
                 <ul class="space-y-2 text-sm text-gray-700">
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm">check_circle</mat-icon>
-                    <span>Puede registrar usuarios individualmente o mediante archivo CSV</span>
+                    <mat-icon class="text-green-600 mr-2 text-sm"
+                      >check_circle</mat-icon
+                    >
+                    <span
+                      >Puede registrar usuarios individualmente o mediante
+                      archivo CSV</span
+                    >
                   </li>
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm">check_circle</mat-icon>
-                    <span>Todos los usuarios requieren validación del administrador</span>
+                    <mat-icon class="text-green-600 mr-2 text-sm"
+                      >check_circle</mat-icon
+                    >
+                    <span
+                      >Todos los usuarios requieren validación del
+                      administrador</span
+                    >
                   </li>
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm">check_circle</mat-icon>
-                    <span>Los datos se guardarán automáticamente en el sistema</span>
+                    <mat-icon class="text-green-600 mr-2 text-sm"
+                      >check_circle</mat-icon
+                    >
+                    <span
+                      >Los datos se guardarán automáticamente en el
+                      sistema</span
+                    >
                   </li>
                 </ul>
               </div>
@@ -99,22 +127,29 @@ import { UsersService } from '../../core/services/users.service';
         </mat-card>
 
         <!-- Sección de herramientas de importación -->
-        <mat-card class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+        <mat-card
+          class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
           <div class="bg-gradient-to-r from-gray-700 to-gray-900 px-6 py-4">
-            <mat-card-title class="text-white text-xl font-semibold !m-0 flex items-center justify-between">
+            <mat-card-title
+              class="text-white text-xl font-semibold !m-0 flex items-center justify-between"
+            >
               <div>
                 <mat-icon class="mr-2 align-middle">cloud_upload</mat-icon>
                 Importación Masiva
               </div>
-              <span class="text-sm font-normal bg-blue-500 px-3 py-1 rounded-full">Recomendado para múltiples usuarios</span>
+              <span
+                class="text-sm font-normal bg-blue-500 px-3 py-1 rounded-full"
+                >Recomendado para múltiples usuarios</span
+              >
             </mat-card-title>
           </div>
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div class="space-y-4">
                 <div class="flex items-center space-x-4">
-                  <button 
-                    mat-raised-button 
+                  <button
+                    mat-raised-button
                     color="primary"
                     class="!bg-blue-600 hover:!bg-blue-700 !text-white !font-medium !px-6 !py-3 !rounded-lg !shadow-md transition-all duration-200"
                     (click)="downloadTemplate()"
@@ -127,10 +162,10 @@ import { UsersService } from '../../core/services/users.service';
                     <p class="text-xs">Formato predefinido</p>
                   </div>
                 </div>
-                
+
                 <div class="flex items-center space-x-4">
-                  <button 
-                    mat-stroked-button 
+                  <button
+                    mat-stroked-button
                     color="primary"
                     class="!border-blue-600 !text-blue-600 hover:!bg-blue-50 !font-medium !px-6 !py-3 !rounded-lg transition-all duration-200"
                     (click)="fileInput.click()"
@@ -151,15 +186,21 @@ import { UsersService } from '../../core/services/users.service';
                   </div>
                 </div>
               </div>
-              
+
               <div class="bg-gray-50 border border-gray-200 rounded-xl p-5">
                 <div *ngIf="selectedFileName; else noFile" class="space-y-3">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                      <mat-icon class="text-green-600 mr-3">description</mat-icon>
+                      <mat-icon class="text-green-600 mr-3"
+                        >description</mat-icon
+                      >
                       <div>
-                        <p class="font-medium text-gray-800">{{ selectedFileName }}</p>
-                        <p class="text-xs text-gray-500">Archivo cargado exitosamente</p>
+                        <p class="font-medium text-gray-800">
+                          {{ selectedFileName }}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          Archivo cargado exitosamente
+                        </p>
                       </div>
                     </div>
                     <mat-icon class="text-green-500">check_circle</mat-icon>
@@ -171,9 +212,13 @@ import { UsersService } from '../../core/services/users.service';
                 </div>
                 <ng-template #noFile>
                   <div class="text-center py-4">
-                    <mat-icon class="text-gray-400 text-4xl mb-3">folder_open</mat-icon>
+                    <mat-icon class="text-gray-400 text-4xl mb-3"
+                      >folder_open</mat-icon
+                    >
                     <p class="text-gray-500">No hay archivo seleccionado</p>
-                    <p class="text-xs text-gray-400 mt-1">Suba un archivo CSV para continuar</p>
+                    <p class="text-xs text-gray-400 mt-1">
+                      Suba un archivo CSV para continuar
+                    </p>
                   </div>
                 </ng-template>
               </div>
@@ -182,22 +227,31 @@ import { UsersService } from '../../core/services/users.service';
         </mat-card>
 
         <!-- Formulario manual -->
-        <mat-card class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+        <mat-card
+          class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
           <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">person_add</mat-icon>
               Registro Manual
             </mat-card-title>
           </div>
-          <br>
+          <br />
           <mat-card-content class="p-6">
-            <form [formGroup]="form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <form
+              [formGroup]="form"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
               <!-- Campo Nombre -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label class="text-gray-600">Nombre</mat-label>
                 <input matInput formControlName="nombre" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">person</mat-icon>
-                <mat-error *ngIf="form.get('nombre')?.invalid && form.get('nombre')?.touched">
+                <mat-error
+                  *ngIf="
+                    form.get('nombre')?.invalid && form.get('nombre')?.touched
+                  "
+                >
                   El nombre es requerido
                 </mat-error>
               </mat-form-field>
@@ -207,7 +261,12 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Apellido Paterno</mat-label>
                 <input matInput formControlName="apellidoPaterno" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">badge</mat-icon>
-                <mat-error *ngIf="form.get('apellidoPaterno')?.invalid && form.get('apellidoPaterno')?.touched">
+                <mat-error
+                  *ngIf="
+                    form.get('apellidoPaterno')?.invalid &&
+                    form.get('apellidoPaterno')?.touched
+                  "
+                >
                   El apellido paterno es requerido
                 </mat-error>
               </mat-form-field>
@@ -222,9 +281,23 @@ import { UsersService } from '../../core/services/users.service';
               <!-- Campo Función -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label class="text-gray-600">Función/Cargo</mat-label>
-                <input matInput formControlName="funcion" />
+                <mat-select formControlName="funcion" panelClass="rounded-lg">
+                  <mat-option
+                    *ngFor="let func of funciones"
+                    [value]="func.id"
+                    class="hover:bg-blue-50"
+                  >
+                    <div class="flex items-center">
+                      <span>{{ func.nombre }}</span>
+                    </div>
+                  </mat-option>
+                </mat-select>
                 <mat-icon matPrefix class="text-gray-400 mr-2">work</mat-icon>
-                <mat-error *ngIf="form.get('funcion')?.invalid && form.get('funcion')?.touched">
+                <mat-error
+                  *ngIf="
+                    form.get('funcion')?.invalid && form.get('funcion')?.touched
+                  "
+                >
                   La función es requerida
                 </mat-error>
               </mat-form-field>
@@ -234,7 +307,12 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Teléfono</mat-label>
                 <input matInput formControlName="telefono" type="tel" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
-                <mat-error *ngIf="form.get('telefono')?.invalid && form.get('telefono')?.touched">
+                <mat-error
+                  *ngIf="
+                    form.get('telefono')?.invalid &&
+                    form.get('telefono')?.touched
+                  "
+                >
                   El teléfono es requerido
                 </mat-error>
               </mat-form-field>
@@ -244,8 +322,16 @@ import { UsersService } from '../../core/services/users.service';
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
-                <mat-error *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
-                  {{ form.get('email')?.hasError('required') ? 'El email es requerido' : 'Email inválido' }}
+                <mat-error
+                  *ngIf="
+                    form.get('email')?.invalid && form.get('email')?.touched
+                  "
+                >
+                  {{
+                    form.get('email')?.hasError('required')
+                      ? 'El email es requerido'
+                      : 'Email inválido'
+                  }}
                 </mat-error>
               </mat-form-field>
 
@@ -266,14 +352,22 @@ import { UsersService } from '../../core/services/users.service';
         </mat-card>
 
         <!-- Tabla de previsualización -->
-        <mat-card *ngIf="previewUsers.length" class="shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+        <mat-card
+          *ngIf="previewUsers.length"
+          class="shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
           <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4">
-            <mat-card-title class="text-white text-xl font-semibold !m-0 flex items-center justify-between">
+            <mat-card-title
+              class="text-white text-xl font-semibold !m-0 flex items-center justify-between"
+            >
               <div>
                 <mat-icon class="mr-2 align-middle">list_alt</mat-icon>
                 Vista Previa de Usuarios
-                <span class="ml-3 bg-white text-purple-700 text-sm font-medium px-3 py-1 rounded-full">
-                  {{ previewUsers.length }} {{ previewUsers.length === 1 ? 'usuario' : 'usuarios' }}
+                <span
+                  class="ml-3 bg-white text-purple-700 text-sm font-medium px-3 py-1 rounded-full"
+                >
+                  {{ previewUsers.length }}
+                  {{ previewUsers.length === 1 ? 'usuario' : 'usuarios' }}
                 </span>
               </div>
               <button
@@ -292,50 +386,85 @@ import { UsersService } from '../../core/services/users.service';
               <table mat-table [dataSource]="previewUsers" class="w-full">
                 <!-- Nombre Column -->
                 <ng-container matColumnDef="nombre">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold text-gray-700 px-6 py-4 bg-gray-50">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                  >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">person</mat-icon>
                       Nombre Completo
                     </div>
                   </th>
-                  <td mat-cell *matCellDef="let u" class="px-6 py-4 border-t border-gray-100">
-                    <div class="font-medium text-gray-900">{{ u.nombre }} {{ u.apellidoPaterno }} {{ u.apellidoMaterno }}</div>
+                  <td
+                    mat-cell
+                    *matCellDef="let u"
+                    class="px-6 py-4 border-t border-gray-100"
+                  >
+                    <div class="font-medium text-gray-900">
+                      {{ u.nombre }} {{ u.apellidoPaterno }}
+                      {{ u.apellidoMaterno }}
+                    </div>
                     <div class="text-sm text-gray-500">{{ u.funcion }}</div>
                   </td>
                 </ng-container>
 
                 <!-- Email Column -->
                 <ng-container matColumnDef="email">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold text-gray-700 px-6 py-4 bg-gray-50">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                  >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">email</mat-icon>
                       Email
                     </div>
                   </th>
-                  <td mat-cell *matCellDef="let u" class="px-6 py-4 border-t border-gray-100">
+                  <td
+                    mat-cell
+                    *matCellDef="let u"
+                    class="px-6 py-4 border-t border-gray-100"
+                  >
                     <div class="text-gray-900">{{ u.email }}</div>
                   </td>
                 </ng-container>
-                
+
                 <!-- Teléfono Column -->
                 <ng-container matColumnDef="telefono">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold text-gray-700 px-6 py-4 bg-gray-50">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                  >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">phone</mat-icon>
                       Teléfono
                     </div>
                   </th>
-                  <td mat-cell *matCellDef="let u" class="px-6 py-4 border-t border-gray-100">
+                  <td
+                    mat-cell
+                    *matCellDef="let u"
+                    class="px-6 py-4 border-t border-gray-100"
+                  >
                     <div class="text-gray-900">{{ u.telefono }}</div>
                   </td>
                 </ng-container>
-                
+
                 <!-- Acciones Column -->
                 <ng-container matColumnDef="acciones">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold text-gray-700 px-6 py-4 bg-gray-50 text-right">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50 text-right"
+                  >
                     Acciones
                   </th>
-                  <td mat-cell *matCellDef="let u; let i = index" class="px-6 py-4 border-t border-gray-100 text-right">
+                  <td
+                    mat-cell
+                    *matCellDef="let u; let i = index"
+                    class="px-6 py-4 border-t border-gray-100 text-right"
+                  >
                     <button
                       mat-icon-button
                       class="!text-red-600 hover:!bg-red-50"
@@ -348,10 +477,14 @@ import { UsersService } from '../../core/services/users.service';
                   </td>
                 </ng-container>
 
-                <tr mat-header-row *matHeaderRowDef="columns" class="bg-gray-50"></tr>
-                <tr 
-                  mat-row 
-                  *matRowDef="let row; columns: columns; let even = even" 
+                <tr
+                  mat-header-row
+                  *matHeaderRowDef="columns"
+                  class="bg-gray-50"
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let row; columns: columns; let even = even"
                   [class.bg-gray-50]="even"
                   class="hover:bg-blue-50 transition-colors duration-150"
                 ></tr>
@@ -361,7 +494,9 @@ import { UsersService } from '../../core/services/users.service';
             <div *ngIf="previewUsers.length === 0" class="text-center py-12">
               <mat-icon class="text-gray-300 text-5xl mb-4">group_off</mat-icon>
               <p class="text-gray-500">No hay usuarios en la lista</p>
-              <p class="text-sm text-gray-400 mt-1">Agregue usuarios mediante el formulario o importación CSV</p>
+              <p class="text-sm text-gray-400 mt-1">
+                Agregue usuarios mediante el formulario o importación CSV
+              </p>
             </div>
           </mat-card-content>
         </mat-card>
@@ -370,10 +505,19 @@ import { UsersService } from '../../core/services/users.service';
         <div *ngIf="previewUsers.length === 0" class="text-center py-12">
           <div class="max-w-md mx-auto">
             <mat-icon class="text-gray-300 text-6xl mb-4">how_to_reg</mat-icon>
-            <h3 class="text-xl font-semibold text-gray-700 mb-2">Lista Vacía</h3>
-            <p class="text-gray-500 mb-6">Comience agregando usuarios mediante el formulario manual o importando un archivo CSV.</p>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">
+              Lista Vacía
+            </h3>
+            <p class="text-gray-500 mb-6">
+              Comience agregando usuarios mediante el formulario manual o
+              importando un archivo CSV.
+            </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-              <button mat-stroked-button color="accent" class="!border-purple-600 !text-purple-600">
+              <button
+                mat-stroked-button
+                color="accent"
+                class="!border-purple-600 !text-purple-600"
+              >
                 <mat-icon class="mr-2">description</mat-icon>
                 Ver Documentación
               </button>
@@ -389,47 +533,50 @@ import { UsersService } from '../../core/services/users.service';
         background-color: white;
         border-radius: 8px;
       }
-      
+
       ::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline {
         color: #e5e7eb;
       }
-      
-      ::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-thick {
+
+      ::ng-deep
+        .mat-form-field-appearance-outline.mat-focused
+        .mat-form-field-outline-thick {
         color: #3b82f6;
       }
-      
+
       ::ng-deep .mat-select-panel {
         border-radius: 12px !important;
         margin-top: 8px !important;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
       }
-      
+
       ::ng-deep .mat-option {
         border-radius: 8px !important;
         margin: 4px 8px !important;
       }
-      
+
       ::ng-deep .mat-card {
         border-radius: 16px !important;
       }
-      
+
       table {
         border-collapse: separate;
         border-spacing: 0;
       }
-      
+
       th:first-child {
         border-top-left-radius: 12px;
       }
-      
+
       th:last-child {
         border-top-right-radius: 12px;
       }
-      
+
       tr:last-child td:first-child {
         border-bottom-left-radius: 12px;
       }
-      
+
       tr:last-child td:last-child {
         border-bottom-right-radius: 12px;
       }
@@ -439,12 +586,13 @@ import { UsersService } from '../../core/services/users.service';
 export class UserFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private areasService = inject(AreasService);
+  private funcionesService = inject(FuncionesService);
   private usersAccessService = inject(UsersAccesService);
   private authService = inject(AuthService);
   selectedFileName: string | null = null;
 
-
   areas: Area[] = [];
+  funciones: Funcion[] = [];
   previewUsers: any[] = [];
   columns = ['nombre', 'email', 'telefono', 'acciones'];
   removeUser(index: number) {
@@ -453,8 +601,6 @@ export class UserFormComponent implements OnInit {
     // Forzamos actualización de la tabla
     this.previewUsers = [...this.previewUsers];
   }
-
-
 
   form: FormGroup = this.fb.group({
     areaId: ['', Validators.required],
@@ -466,7 +612,6 @@ export class UserFormComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
   });
   private usersService = inject(UsersService);
-
 
   async loadAreasByUsuario() {
     const authUser = this.authService.getCurrentUser();
@@ -487,14 +632,30 @@ export class UserFormComponent implements OnInit {
     this.areas = await this.areasService.getAreasByIds(userData.areaIds);
   }
 
-
   async ngOnInit() {
     await this.loadAreasByUsuario();
+    await this.loadFunciones();
+  }
+
+  async loadFunciones() {
+    try {
+      this.funciones = await this.funcionesService.getFunciones();
+      console.log('✅ Funciones cargadas:', this.funciones);
+    } catch (error) {
+      console.error('Error cargando funciones:', error);
+      this.funciones = [];
+    }
   }
 
   downloadTemplate() {
-    const csv =
-      'nombre,apellidoPaterno,apellidoMaterno,funcion,telefono,email\n';
+    // Generar CSV con funciones disponibles como referencia
+    let csv = 'nombre,apellidoPaterno,apellidoMaterno,funcion,telefono,email\n';
+    csv += '# Funciones disponibles (use el nombre exacto):\n';
+    this.funciones.forEach((func) => {
+      csv += `# - ${func.nombre}\n`;
+    });
+    csv += '\n';
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -515,16 +676,23 @@ export class UserFormComponent implements OnInit {
     reader.readAsText(file);
   }
 
-
-
   parseCSV(csv: string) {
-    const lines = csv.split('\n').filter(l => l.trim());
+    const lines = csv.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
     const headers = lines[0].split(',');
 
-    lines.slice(1).forEach(line => {
+    lines.slice(1).forEach((line) => {
       const values = line.split(',');
       const user: any = {};
-      headers.forEach((h, i) => (user[h] = values[i]?.trim()));
+      headers.forEach((h, i) => {
+        const value = values[i]?.trim();
+        // Si es el campo función, convertir el nombre a ID
+        if (h === 'funcion' && value) {
+          const funcionObj = this.funciones.find((f) => f.nombre === value);
+          user[h] = funcionObj ? funcionObj.id : value;
+        } else {
+          user[h] = value;
+        }
+      });
       this.previewUsers.push(user);
     });
   }
@@ -557,13 +725,12 @@ export class UserFormComponent implements OnInit {
         ...u,
         areaId,
         empresaId: leaderData.empresaId,
-        estatus: false, // pendiente
+        registrantEmail: authUser.email, // ✅ Agregar email del registrante
+        estatus: 'pendiente',
       });
     }
 
     this.previewUsers = [];
     alert('Solicitudes enviadas correctamente');
   }
-
-
 }
