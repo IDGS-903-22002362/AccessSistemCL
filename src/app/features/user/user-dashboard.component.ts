@@ -167,9 +167,6 @@ import { User } from '@angular/fire/auth';
     </button>
 -->
 
-  </mat-card-content>
-</mat-card>
-
 <button
   mat-raised-button
   style="background-color:#007A53; color: white;"
@@ -177,6 +174,9 @@ import { User } from '@angular/fire/auth';
 >
   Registrar usuarios
 </button>
+  </mat-card-content>
+</mat-card>
+
 
 
         <mat-card>
