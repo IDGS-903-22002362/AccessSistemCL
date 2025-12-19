@@ -6,12 +6,18 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService, User } from '../../core/services/users.service';
+import { MailrelayService } from '../../core/services/mailrelay.service';
 import {
   FuncionesService,
   Funcion,
 } from '../../core/services/funciones.service';
+import { AreasService, Area } from '../../core/services/areas.service';
 import {
   UsersAccesService,
   UserAccess,
@@ -27,19 +33,24 @@ import {
     MatIconModule,
     MatTableModule,
     MatChipsModule,
+    MatCheckboxModule,
+    MatDialogModule,
+    FormsModule,
+    HttpClientModule,
   ],
   template: `
-    <div class="min-h-screen bg-gray-50 p-6">
+    <div class="min-h-screen bg-white p-6">
       <div class="max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
-          <h1 class="text-3xl font-bold text-gray-900">
+        <div
+          class="flex justify-between items-center mb-8 bg-[#007A53] text-white p-6 rounded-lg shadow-lg"
+        >
+          <h1 class="text-3xl font-bold">
             {{ headerTitle }}
           </h1>
           <button
             mat-raised-button
-            color="warn"
             (click)="logout()"
-            class="flex items-center gap-2"
+            class="flex items-center gap-2 !bg-white !text-[#007A53] hover:!bg-gray-100"
           >
             <mat-icon>logout</mat-icon>
             Cerrar Sesión
@@ -47,45 +58,172 @@ import {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <mat-card class="p-6">
+          <mat-card class="p-6 border-2 border-[#007A53]">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold">Solicitudes Pendientes</h2>
-              <mat-icon class="text-orange-500 text-4xl">pending</mat-icon>
+              <h2 class="text-xl font-semibold text-[#007A53]">
+                Solicitudes Pendientes
+              </h2>
+              <mat-icon
+                class="text-orange-500"
+                style="font-size: 48px; width: 48px; height: 48px;"
+                >schedule</mat-icon
+              >
             </div>
-            <p class="text-4xl font-bold text-orange-600">{{ pendingCount }}</p>
+            <p class="text-4xl font-bold text-[#007A53]">{{ pendingCount }}</p>
             <p class="text-gray-600 mt-2">Pendientes de revisión</p>
           </mat-card>
 
-          <mat-card class="p-6">
+          <mat-card class="p-6 border-2 border-[#007A53]">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold">Solicitudes Aprobadas</h2>
-              <mat-icon class="text-green-500 text-4xl">check_circle</mat-icon>
+              <h2 class="text-xl font-semibold text-[#007A53]">
+                Solicitudes Aprobadas
+              </h2>
+              <mat-icon
+                class="text-[#007A53]"
+                style="font-size: 48px; width: 48px; height: 48px;"
+                >check_circle</mat-icon
+              >
             </div>
-            <p class="text-4xl font-bold text-green-600">{{ approvedCount }}</p>
+            <p class="text-4xl font-bold text-[#007A53]">{{ approvedCount }}</p>
             <p class="text-gray-600 mt-2">Aprobadas</p>
           </mat-card>
 
-          <mat-card class="p-6">
+          <mat-card class="p-6 border-2 border-[#007A53]">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold">Solicitudes Rechazadas</h2>
-              <mat-icon class="text-red-500 text-4xl">cancel</mat-icon>
+              <h2 class="text-xl font-semibold text-[#007A53]">
+                Solicitudes Rechazadas
+              </h2>
+              <mat-icon
+                class="text-red-500"
+                style="font-size: 48px; width: 48px; height: 48px;"
+                >cancel</mat-icon
+              >
             </div>
             <p class="text-4xl font-bold text-red-600">{{ rejectedCount }}</p>
             <p class="text-gray-600 mt-2">Rechazadas</p>
           </mat-card>
         </div>
 
-        <mat-card class="mt-8 p-6">
+        <mat-card class="mt-8 p-6 border-2 border-[#007A53]">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-semibold">Solicitudes de Acceso</h2>
+            <h2 class="text-2xl font-semibold text-[#007A53]">
+              Solicitudes de Acceso
+            </h2>
+            <div class="flex gap-2">
+              <button
+                mat-raised-button
+                (click)="showFilters = !showFilters"
+                [disabled]="loading"
+                class="!bg-[#007A53] !text-white hover:!bg-[#006644]"
+              >
+                <mat-icon>filter_list</mat-icon>
+                <span class="ml-2">Filtros</span>
+              </button>
+              <button
+                mat-raised-button
+                (click)="loadSolicitudes()"
+                [disabled]="loading"
+                class="!bg-[#007A53] !text-white hover:!bg-[#006644]"
+              >
+                <mat-icon>refresh</mat-icon>
+                <span class="ml-2">Actualizar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel de Filtros -->
+          <div
+            *ngIf="showFilters"
+            class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+          >
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Área</label
+              >
+              <select
+                [(ngModel)]="filters.area"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todas</option>
+                <option *ngFor="let area of uniqueAreas" [value]="area">
+                  {{ areasMap.get(area) || area }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Estado</label
+              >
+              <select
+                [(ngModel)]="filters.estado"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="rechazado">Rechazado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Función</label
+              >
+              <select
+                [(ngModel)]="filters.funcion"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todas</option>
+                <option *ngFor="let func of uniqueFunciones" [value]="func">
+                  {{ funcionesMap.get(func) || func }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Registrante</label
+              >
+              <select
+                [(ngModel)]="filters.registrante"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todos</option>
+                <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
+                  {{ reg }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botones de Acción Masiva -->
+          <div
+            *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
+            class="flex gap-2 mb-4"
+          >
             <button
               mat-raised-button
-              color="primary"
-              (click)="loadSolicitudes()"
-              [disabled]="loading"
+              (click)="aprobarSeleccionadas()"
+              [disabled]="selectedSolicitudes.size === 0 || processing"
+              class="!bg-[#007A53] !text-white hover:!bg-[#006644]"
             >
-              <mat-icon>refresh</mat-icon>
-              <span class="ml-2">Actualizar</span>
+              <mat-icon>check</mat-icon>
+              <span class="ml-2"
+                >Aprobar Seleccionadas ({{ selectedSolicitudes.size }})</span
+              >
+            </button>
+            <button
+              mat-raised-button
+              (click)="rechazarSeleccionadas()"
+              [disabled]="selectedSolicitudes.size === 0 || processing"
+              class="!bg-red-600 !text-white hover:!bg-red-700"
+            >
+              <mat-icon>close</mat-icon>
+              <span class="ml-2"
+                >Rechazar Seleccionadas ({{ selectedSolicitudes.size }})</span
+              >
             </button>
           </div>
 
@@ -118,45 +256,55 @@ import {
             class="overflow-x-auto"
           >
             <table class="w-full">
-              <thead class="bg-gray-100">
+              <thead class="bg-[#007A53] text-white">
                 <tr>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    <mat-checkbox
+                      [(ngModel)]="selectAll"
+                      (change)="toggleSelectAll()"
+                      [disabled]="getPendienteCount() === 0"
+                      class="text-white"
+                    >
+                    </mat-checkbox>
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Nombre
                   </th>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Email
                   </th>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Área
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Función
                   </th>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Teléfono
                   </th>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Estado
-                  </th>
-                  <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase"
-                  >
-                    Acciones
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr
                   *ngFor="let solicitud of filteredSolicitudes"
-                  class="hover:bg-gray-50"
+                  class="hover:bg-[#007A53] hover:bg-opacity-5"
+                  [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
+                  [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
                 >
+                  <td class="px-4 py-4 whitespace-nowrap">
+                    <mat-checkbox
+                      *ngIf="
+                        canManageSolicitud(solicitud) &&
+                        solicitud.estatus === 'pendiente'
+                      "
+                      [checked]="selectedSolicitudes.has(solicitud.id!)"
+                      (change)="toggleSelection(solicitud.id!)"
+                    >
+                    </mat-checkbox>
+                  </td>
                   <td class="px-4 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">
                       {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
@@ -167,6 +315,9 @@ import {
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {{ solicitud.email }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {{
@@ -191,38 +342,6 @@ import {
                       {{ solicitud.estatus }}
                     </span>
                   </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <div class="flex gap-2">
-                      <button
-                        *ngIf="
-                          canManageSolicitud(solicitud) &&
-                          solicitud.estatus === 'pendiente'
-                        "
-                        mat-raised-button
-                        color="primary"
-                        (click)="aprobar(solicitud)"
-                        [disabled]="processingId === solicitud.id"
-                        class="text-xs"
-                      >
-                        <mat-icon class="text-sm">check</mat-icon>
-                        Aprobar
-                      </button>
-                      <button
-                        *ngIf="
-                          canManageSolicitud(solicitud) &&
-                          solicitud.estatus === 'pendiente'
-                        "
-                        mat-raised-button
-                        color="warn"
-                        (click)="rechazar(solicitud)"
-                        [disabled]="processingId === solicitud.id"
-                        class="text-xs"
-                      >
-                        <mat-icon class="text-sm">close</mat-icon>
-                        Rechazar
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -237,13 +356,15 @@ export class AdminAreaDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private usersService = inject(UsersService);
   private funcionesService = inject(FuncionesService);
+  private areasService = inject(AreasService);
   private usersAccessService = inject(UsersAccesService);
+  private mailrelayService = inject(MailrelayService);
   private router = inject(Router);
 
   // Estado del componente
   loading = false;
   hasPermissions = false;
-  processingId: string | null = null;
+  processing = false;
   headerTitle = 'Dashboard Admin de Área';
 
   // Datos del AdminArea
@@ -254,7 +375,26 @@ export class AdminAreaDashboardComponent implements OnInit {
   // Solicitudes
   allSolicitudes: UserAccess[] = [];
   filteredSolicitudes: UserAccess[] = [];
-  funcionesMap: Map<string, string> = new Map(); // ID -> Nombre
+  funcionesMap: Map<string, string> = new Map();
+  areasMap: Map<string, string> = new Map();
+
+  // Selección múltiple
+  selectedSolicitudes: Set<string> = new Set();
+  selectAll = false;
+
+  // Filtros
+  filters = {
+    area: '',
+    estado: '',
+    funcion: '',
+    registrante: '',
+  };
+  showFilters = false;
+
+  // Opciones para filtros
+  uniqueAreas: string[] = [];
+  uniqueFunciones: string[] = [];
+  uniqueRegistrantes: string[] = [];
 
   // Contadores
   pendingCount = 0;
@@ -265,6 +405,7 @@ export class AdminAreaDashboardComponent implements OnInit {
     console.log('🚀 Iniciando AdminArea Dashboard...');
     try {
       await this.loadFunciones();
+      await this.loadAreas();
       await this.loadAdminData();
       if (this.hasPermissions) {
         await this.loadSolicitudes();
@@ -288,6 +429,21 @@ export class AdminAreaDashboardComponent implements OnInit {
       console.log('✅ Mapa de funciones cargado:', this.funcionesMap);
     } catch (error) {
       console.error('❌ Error cargando funciones:', error);
+    }
+  }
+
+  async loadAreas() {
+    try {
+      console.log('🏢 Cargando áreas...');
+      const areas = await this.areasService.getAreas();
+      areas.forEach((area) => {
+        if (area.id) {
+          this.areasMap.set(area.id, area.nombre);
+        }
+      });
+      console.log('✅ Mapa de áreas cargado:', this.areasMap);
+    } catch (error) {
+      console.error('❌ Error cargando áreas:', error);
     }
   }
 
@@ -389,12 +545,116 @@ export class AdminAreaDashboardComponent implements OnInit {
 
       // Actualizar contadores
       this.updateCounts();
+
+      // Extraer opciones únicas para filtros
+      this.extractFilterOptions();
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       this.filteredSolicitudes = [];
     } finally {
       this.loading = false;
     }
+  }
+
+  /**
+   * Extraer opciones únicas para los filtros
+   */
+  private extractFilterOptions() {
+    const areas = new Set<string>();
+    const funciones = new Set<string>();
+    const registrantes = new Set<string>();
+
+    this.filteredSolicitudes.forEach((sol) => {
+      if (sol.areaId) areas.add(sol.areaId);
+      if (sol.funcion) funciones.add(sol.funcion);
+      if (sol.registrantEmail) registrantes.add(sol.registrantEmail);
+    });
+
+    this.uniqueAreas = Array.from(areas);
+    this.uniqueFunciones = Array.from(funciones);
+    this.uniqueRegistrantes = Array.from(registrantes);
+  }
+
+  /**
+   * Aplicar filtros a las solicitudes
+   */
+  applyFilters() {
+    let filtered = this.allSolicitudes.filter((solicitud) =>
+      this.canViewSolicitud(solicitud)
+    );
+
+    if (this.filters.area) {
+      filtered = filtered.filter((s) => s.areaId === this.filters.area);
+    }
+    if (this.filters.estado) {
+      filtered = filtered.filter((s) => s.estatus === this.filters.estado);
+    }
+    if (this.filters.funcion) {
+      filtered = filtered.filter((s) => s.funcion === this.filters.funcion);
+    }
+    if (this.filters.registrante) {
+      filtered = filtered.filter(
+        (s) => s.registrantEmail === this.filters.registrante
+      );
+    }
+
+    this.filteredSolicitudes = filtered;
+    this.updateCounts();
+    this.selectedSolicitudes.clear();
+    this.selectAll = false;
+  }
+
+  /**
+   * Toggle selección individual
+   */
+  toggleSelection(id: string) {
+    if (this.selectedSolicitudes.has(id)) {
+      this.selectedSolicitudes.delete(id);
+    } else {
+      this.selectedSolicitudes.add(id);
+    }
+    this.updateSelectAll();
+  }
+
+  /**
+   * Toggle seleccionar todas
+   */
+  toggleSelectAll() {
+    if (this.selectAll) {
+      // Seleccionar solo las pendientes que pueden gestionarse
+      this.filteredSolicitudes.forEach((sol) => {
+        if (
+          sol.id &&
+          sol.estatus === 'pendiente' &&
+          this.canManageSolicitud(sol)
+        ) {
+          this.selectedSolicitudes.add(sol.id);
+        }
+      });
+    } else {
+      this.selectedSolicitudes.clear();
+    }
+  }
+
+  /**
+   * Actualizar estado de selectAll
+   */
+  private updateSelectAll() {
+    const pendientes = this.filteredSolicitudes.filter(
+      (s) => s.estatus === 'pendiente' && this.canManageSolicitud(s)
+    );
+    this.selectAll =
+      pendientes.length > 0 &&
+      pendientes.every((s) => s.id && this.selectedSolicitudes.has(s.id));
+  }
+
+  /**
+   * Obtener cantidad de solicitudes pendientes
+   */
+  getPendienteCount(): number {
+    return this.filteredSolicitudes.filter(
+      (s) => s.estatus === 'pendiente' && this.canManageSolicitud(s)
+    ).length;
   }
 
   /**
@@ -440,57 +700,147 @@ export class AdminAreaDashboardComponent implements OnInit {
   }
 
   /**
-   * Aprobar solicitud
+   * Aprobar solicitudes seleccionadas
    */
-  async aprobar(solicitud: UserAccess) {
-    if (!solicitud.id || !this.canManageSolicitud(solicitud)) {
-      console.error('No tienes permisos para aprobar esta solicitud');
+  async aprobarSeleccionadas() {
+    if (this.selectedSolicitudes.size === 0) {
+      alert('No hay solicitudes seleccionadas');
       return;
     }
 
-    this.processingId = solicitud.id;
-    try {
-      await this.usersAccessService.updateUser(solicitud.id, {
-        estatus: 'aprobado',
-      });
+    const confirmacion = confirm(
+      `¿Está seguro de aprobar ${this.selectedSolicitudes.size} solicitud(es)?`
+    );
+    if (!confirmacion) return;
 
-      // Actualizar localmente
-      solicitud.estatus = 'aprobado';
-      this.updateCounts();
+    this.processing = true;
+    const currentUser = this.authService.getCurrentUser();
+    const reviewerEmail = currentUser?.email || 'desconocido';
+    let exitosos = 0;
+    let fallidos = 0;
 
-      console.log('Solicitud aprobada correctamente');
-    } catch (error) {
-      console.error('Error al aprobar solicitud:', error);
-    } finally {
-      this.processingId = null;
+    for (const id of this.selectedSolicitudes) {
+      const solicitud = this.allSolicitudes.find((s) => s.id === id);
+      if (!solicitud || !this.canManageSolicitud(solicitud)) continue;
+
+      try {
+        // Actualizar en Firestore
+        await this.usersAccessService.updateUser(id, {
+          estatus: 'aprobado',
+          reviewedBy: reviewerEmail,
+          reviewedAt: new Date(),
+        });
+
+        // Enviar correo
+        this.mailrelayService
+          .sendAcceptTestEmail(
+            solicitud.email,
+            `${solicitud.nombre} ${solicitud.apellidoPaterno}`
+          )
+          .subscribe({
+            next: () => console.log('✅ Correo enviado a:', solicitud.email),
+            error: (err) => {
+              console.error('❌ Error enviando correo:', err);
+              if (err.status === 0) {
+                console.warn(
+                  '⚠️ Error CORS: El servidor de Mailrelay no permite peticiones directas desde el navegador. Necesitas usar Firebase Cloud Functions o un servidor proxy.'
+                );
+              }
+            },
+          });
+
+        // Actualizar localmente
+        solicitud.estatus = 'aprobado';
+        solicitud.reviewedBy = reviewerEmail;
+        solicitud.reviewedAt = new Date();
+        exitosos++;
+      } catch (error) {
+        console.error('Error aprobando solicitud:', id, error);
+        fallidos++;
+      }
+    }
+
+    this.selectedSolicitudes.clear();
+    this.selectAll = false;
+    this.updateCounts();
+    this.processing = false;
+
+    if (exitosos > 0) {
+      alert(
+        `✅ Aprobadas: ${exitosos}\n❌ Fallidas: ${fallidos}\n\n⚠️ Nota: Los correos no se envían debido a restricciones CORS.\nPara habilitar envío de correos, implementa Firebase Cloud Functions.`
+      );
+    } else {
+      alert(`❌ No se pudo aprobar ninguna solicitud. Fallidas: ${fallidos}`);
     }
   }
 
   /**
-   * Rechazar solicitud
+   * Rechazar solicitudes seleccionadas
    */
-  async rechazar(solicitud: UserAccess) {
-    if (!solicitud.id || !this.canManageSolicitud(solicitud)) {
-      console.error('No tienes permisos para rechazar esta solicitud');
+  async rechazarSeleccionadas() {
+    if (this.selectedSolicitudes.size === 0) {
+      alert('No hay solicitudes seleccionadas');
       return;
     }
 
-    this.processingId = solicitud.id;
-    try {
-      await this.usersAccessService.updateUser(solicitud.id, {
-        estatus: 'rechazado',
-      });
+    const confirmacion = confirm(
+      `¿Está seguro de rechazar ${this.selectedSolicitudes.size} solicitud(es)?`
+    );
+    if (!confirmacion) return;
 
-      // Actualizar localmente
-      solicitud.estatus = 'rechazado';
-      this.updateCounts();
+    this.processing = true;
+    const currentUser = this.authService.getCurrentUser();
+    const reviewerEmail = currentUser?.email || 'desconocido';
+    let exitosos = 0;
+    let fallidos = 0;
 
-      console.log('Solicitud rechazada correctamente');
-    } catch (error) {
-      console.error('Error al rechazar solicitud:', error);
-    } finally {
-      this.processingId = null;
+    for (const id of this.selectedSolicitudes) {
+      const solicitud = this.allSolicitudes.find((s) => s.id === id);
+      if (!solicitud || !this.canManageSolicitud(solicitud)) continue;
+
+      try {
+        // Actualizar en Firestore
+        await this.usersAccessService.updateUser(id, {
+          estatus: 'rechazado',
+          reviewedBy: reviewerEmail,
+          reviewedAt: new Date(),
+        });
+
+        // Enviar correo
+        this.mailrelayService
+          .sendRejectTestEmail(
+            solicitud.email,
+            `${solicitud.nombre} ${solicitud.apellidoPaterno}`
+          )
+          .subscribe({
+            next: () => console.log('✅ Correo enviado a:', solicitud.email),
+            error: (err) => {
+              console.error('❌ Error enviando correo:', err);
+              if (err.status === 0) {
+                console.warn(
+                  '⚠️ Error CORS: El servidor Mailrelay bloquea peticiones directas desde el navegador. Solución: usar Firebase Cloud Functions.'
+                );
+              }
+            },
+          });
+
+        // Actualizar localmente
+        solicitud.estatus = 'rechazado';
+        solicitud.reviewedBy = reviewerEmail;
+        solicitud.reviewedAt = new Date();
+        exitosos++;
+      } catch (error) {
+        console.error('Error rechazando solicitud:', id, error);
+        fallidos++;
+      }
     }
+
+    this.selectedSolicitudes.clear();
+    this.selectAll = false;
+    this.updateCounts();
+    this.processing = false;
+
+    alert(`✅ Rechazadas: ${exitosos}\n❌ Fallidas: ${fallidos}`);
   }
 
   /**

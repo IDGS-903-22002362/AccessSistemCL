@@ -12,4 +12,8 @@ export const environment = {
     messagingSenderId: '996173053041',
     appId: '1:996173053041:web:dbe7afc2b3c82d47882fd0',
   },
+  mailrelay: {
+    apiUrl: 'https://acreditaciones.ipzmarketing.com/api/v1',
+    apiKey: 'ahsB__H_zEpJPJcWhUHsXMgsDUbdEazk5HnEswF9',
+  },
 };

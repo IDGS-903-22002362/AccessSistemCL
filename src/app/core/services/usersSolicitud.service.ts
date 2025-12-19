@@ -24,7 +24,10 @@ export interface UserAccess {
     areaId: string;
     registrantEmail?: string;
     estatus: 'pendiente' | 'aprobado' | 'rechazado';
-    createdAt?: any;
+    reviewedBy?: string; // Email de quien aprobó/rechazó
+    reviewedAt?: any; // Timestamp de cuándo se aprobó/rechazó
+    createdAt?: any; // Timestamp de cuándo se creó
+    updatedAt?: any; // Timestamp de última actualización
 }
 
 @Injectable({
