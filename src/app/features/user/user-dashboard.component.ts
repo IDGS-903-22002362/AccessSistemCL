@@ -17,6 +17,8 @@ import {
   JornadaActiva,
 } from '../../core/services/jornadas.service';
 import { take } from 'rxjs/operators';
+import { User } from '@angular/fire/auth';
+
 
 @Component({
   selector: 'app-user-dashboard',
@@ -31,13 +33,26 @@ import { take } from 'rxjs/operators';
   ],
   template: `
     <div class="min-h-screen bg-gray-50">
-      <mat-toolbar color="primary" class="shadow-md">
-        <span class="text-xl font-semibold">{{ headerTitle }}</span>
+      <mat-toolbar style="background-color:#007A53" class="shadow-md">
+        <div class="flex items-center gap-3 text-white">
+          <img
+            src="images/leon.png"
+            alt="Club León"
+            class="h-8 w-auto"
+          />
+          <span class="font-medium">
+            Bienvenido, {{ currentUserName }}
+          </span>
+        </div>
+
         <span class="flex-1"></span>
-        <button mat-icon-button (click)="logout()">
+
+        <button mat-icon-button (click)="logout()" class="text-white">
           <mat-icon>logout</mat-icon>
         </button>
       </mat-toolbar>
+
+
 
       <div class="container mx-auto p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -77,26 +92,22 @@ import { take } from 'rxjs/operators';
             </mat-card-content>
           </mat-card>
         </div>
-        <button mat-raised-button color="primary" (click)="goToRegistro()">
-          Registrar usuarios
-        </button>
-        <!-- Card Jornada Activa -->
-        <mat-card
-          *ngIf="jornadaActiva"
-          class="mb-8 shadow-xl rounded-2xl overflow-hidden border border-gray-100"
-        >
-          <!-- Header -->
-          <div
-            class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex items-center justify-between"
-          >
-            <div class="text-white">
-              <h2 class="text-xl font-bold">
-                Jornada {{ jornadaActiva.jornada }}
-              </h2>
-              <p class="text-sm opacity-90">
-                {{ jornadaActiva.fecha }} · {{ jornadaActiva.hora }}
-              </p>
-            </div>
+
+<!-- Card Jornada Activa -->
+<mat-card
+  *ngIf="jornadaActiva"
+  class="mb-8 shadow-xl rounded-2xl overflow-hidden border border-gray-100"
+>
+  <!-- Header -->
+  <div class="px-6 py-4 flex items-center justify-between" style="background-color:#007A53">
+    <div class="text-white">
+      <h2 class="text-xl font-bold">
+        Jornada {{ jornadaActiva.jornada }}
+      </h2>
+      <p class="text-sm opacity-90">
+        {{ jornadaActiva.fecha }} · {{ jornadaActiva.hora }}
+      </p>
+    </div>
 
             <span
               class="bg-white text-green-700 px-4 py-1 rounded-full text-sm font-semibold flex items-center"
@@ -140,13 +151,35 @@ import { take } from 'rxjs/operators';
                 <span class="font-medium">{{ jornadaActiva.estadio }}</span>
               </div>
 
-              <div class="flex items-center text-gray-700">
-                <mat-icon class="mr-2 text-green-600">schedule</mat-icon>
-                <span>{{ jornadaActiva.hora }}</span>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
+      <div class="flex items-center text-gray-700">
+        <mat-icon class="mr-2 text-green-600">schedule</mat-icon>
+        <span>{{ jornadaActiva.hora }}</span>
+      </div>
+    </div>
+    <!--
+    <button
+      ngIf="jornadaActiva"
+      mat-raised-button
+      color="primary"
+      (click)="goToRegistro()"
+    >
+      Registrar usuarios
+    </button>
+-->
+<div class="mt-8 flex justify-center">
+  <button
+    mat-raised-button
+    style="background-color:#007A53; color: white; padding: 0.75rem 2rem;"
+    (click)="goToRegistro()"
+  >
+    Registrar usuarios
+  </button>
+</div>
+
+  </mat-card-content>
+</mat-card>
+
+
 
         <mat-card>
           <mat-card-header>
@@ -221,18 +254,18 @@ export class UserDashboardComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
-  private usersService = inject(UsersService);
+  currentUserName = '';
+
 
   displayedColumns: string[] = [
     'nombre',
     'email',
     'funcion',
     'estatus',
-    'fecha',
+    'fecha'
   ];
 
   dataSource: any[] = []; // Placeholder vacío
-  headerTitle = 'Dashboard Usuario';
 
   //contadores
   totalUsuarios = 0;
@@ -242,37 +275,33 @@ export class UserDashboardComponent {
 
   jornadaActiva?: JornadaActiva;
 
+
+
   loadJornadaActiva(): void {
-    this.jornadaService
-      .getJornadasActivas$()
-      .pipe(take(1))
-      .subscribe({
-        next: (jornadas) => {
-          console.log('Jornadas activas:', jornadas);
-          this.jornadaActiva = jornadas.length > 0 ? jornadas[0] : undefined;
-        },
-        error: (err) => console.error(err),
-      });
+    this.jornadaService.getJornadasActivas$().pipe(take(1)).subscribe({
+      next: jornadas => {
+        console.log('Jornadas activas:', jornadas);
+        this.jornadaActiva = jornadas.length > 0 ? jornadas[0] : undefined;
+      },
+      error: err => console.error(err)
+    });
   }
+
+
+
+
 
   async loadUsers(): Promise<void> {
     try {
-      const currentUser = await this.authService.user$.toPromise();
+      const currentUser = this.authService.getCurrentUser();
 
       if (!currentUser?.email) {
         console.error('No hay usuario autenticado');
         return;
       }
 
-      const allUsers: UserAccess[] = await this.usersAccessService.getUsers();
-
-      // ✅ Filtrar solo las solicitudes que el registrante creó
-      const users = allUsers.filter(
-        (user) => user.registrantEmail === currentUser.email
-      );
-
-      console.log('📥 Total solicitudes en BD:', allUsers.length);
-      console.log('✅ Solicitudes del registrante:', users.length);
+      const users: UserAccess[] =
+        await this.usersAccessService.getUsersByRegistrant(currentUser.email);
 
       // Tabla
       this.dataSource = users.map((user) => ({
@@ -295,31 +324,29 @@ export class UserDashboardComponent {
     }
   }
 
-  async ngOnInit() {
-    await this.loadHeaderTitle();
+
+
+
+  ngOnInit() {
+    this.authService.user$.pipe(take(1)).subscribe(user => {
+      if (user) {
+        this.currentUserName =
+          user.displayName ||
+          user.email?.split('@')[0] || // apodo desde email
+          'Usuario';
+      }
+    });
+
     this.loadUsers();
     this.loadJornadaActiva();
   }
 
-  async loadHeaderTitle() {
-    try {
-      const currentUser = await this.authService.user$.toPromise();
-      if (currentUser?.email) {
-        const userData = await this.usersService.getUserByEmail(
-          currentUser.email
-        );
-        if (userData?.apodo) {
-          this.headerTitle = `Bienvenido ${userData.apodo}`;
-        }
-      }
-    } catch (error) {
-      console.error('Error cargando apodo:', error);
-    }
-  }
+
 
   goToRegistro() {
     this.router.navigate(['/user/registro']);
   }
+
 
   async logout(): Promise<void> {
     try {
