@@ -18,6 +18,11 @@ import {
 } from '../../core/services/jornadas.service';
 import { take } from 'rxjs/operators';
 import { User } from '@angular/fire/auth';
+import { FuncionesService } from '../../core/services/funciones.service';
+import { FormsModule } from '@angular/forms';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+
+
 
 
 @Component({
@@ -30,7 +35,10 @@ import { User } from '@angular/fire/auth';
     MatIconModule,
     MatCardModule,
     MatTableModule,
+    FormsModule,          // ✅ NECESARIO PARA ngModel
+    MatCheckboxModule,    // (opcional, ya lo importaste)
   ],
+
   template: `
     <div class="min-h-screen bg-gray-50">
       <mat-toolbar style="background-color:#007A53" class="shadow-md">
@@ -187,7 +195,61 @@ import { User } from '@angular/fire/auth';
           </mat-card-header>
           <mat-card-content>
             <div class="overflow-x-auto">
-              <table mat-table [dataSource]="dataSource" class="w-full">
+              <div class="flex justify-end mb-4">
+  <button
+    mat-raised-button
+    (click)="showFilters = !showFilters"
+    style="background-color:#007A53; color:white"
+  >
+    <mat-icon>filter_list</mat-icon>
+    <span class="ml-2">Filtros</span>
+  </button>
+</div>
+
+<div
+  *ngIf="showFilters"
+  class="bg-[#007A53] bg-opacity-5 border border-[#007A53]
+         p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-2 gap-4"
+>
+  <!-- Estado -->
+  <div>
+    <label class="block text-sm font-medium text-[#007A53] mb-1">
+      Estado
+    </label>
+    <select
+      [(ngModel)]="filters.estado"
+      (change)="applyFilters()"
+      class="w-full p-2 border-2 border-[#007A53] rounded
+             focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+    >
+      <option value="">Todos</option>
+      <option value="pendiente">Pendiente</option>
+      <option value="aprobado">Aprobado</option>
+      <option value="rechazado">Rechazado</option>
+    </select>
+  </div>
+
+  <!-- Función -->
+  <div>
+    <label class="block text-sm font-medium text-[#007A53] mb-1">
+      Función
+    </label>
+    <select
+      [(ngModel)]="filters.funcion"
+      (change)="applyFilters()"
+      class="w-full p-2 border-2 border-[#007A53] rounded
+             focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+    >
+      <option value="">Todas</option>
+      <option *ngFor="let func of uniqueFunciones" [value]="func">
+        {{ funcionesMap.get(func) || func }}
+      </option>
+    </select>
+  </div>
+</div>
+
+              <table mat-table [dataSource]="filteredUsers" class="w-full">
+
                 <!-- Nombre -->
                 <ng-container matColumnDef="nombre">
                   <th mat-header-cell *matHeaderCellDef>Nombre</th>
@@ -205,8 +267,11 @@ import { User } from '@angular/fire/auth';
                 <!-- Función -->
                 <ng-container matColumnDef="funcion">
                   <th mat-header-cell *matHeaderCellDef>Función</th>
-                  <td mat-cell *matCellDef="let user">{{ user.funcion }}</td>
+                  <td mat-cell *matCellDef="let user">
+                    {{ user.funcionNombre }}
+                  </td>
                 </ng-container>
+
 
                 <!-- Estatus -->
                 <ng-container matColumnDef="estatus">
@@ -231,7 +296,7 @@ import { User } from '@angular/fire/auth';
                 ></tr>
               </table>
 
-              @if (dataSource.length === 0) {
+              @if (filteredUsers.length === 0) {
               <div class="text-center py-8 text-gray-500">
                 No hay solicitudes registradas
               </div>
@@ -255,6 +320,32 @@ export class UserDashboardComponent {
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
   currentUserName = '';
+  private funcionesService = inject(FuncionesService);
+  funcionesMap = new Map<string, string>();
+  // ===== Filtros =====
+  showFilters = false;
+
+  filters = {
+    estado: '',
+    funcion: '',
+  };
+
+  allUsers: any[] = [];      // respaldo sin filtrar
+  filteredUsers: any[] = []; // lo que se muestra
+
+  uniqueFunciones: string[] = [];
+
+
+  async loadFunciones(): Promise<void> {
+    const funciones = await this.funcionesService.getFunciones();
+
+    funciones.forEach((funcion) => {
+      if (funcion.id) {
+        this.funcionesMap.set(funcion.id, funcion.nombre);
+      }
+    });
+  }
+
 
 
   displayedColumns: string[] = [
@@ -294,37 +385,54 @@ export class UserDashboardComponent {
   async loadUsers(): Promise<void> {
     try {
       const currentUser = this.authService.getCurrentUser();
+      if (!currentUser?.email) return;
 
-      if (!currentUser?.email) {
-        console.error('No hay usuario autenticado');
-        return;
-      }
+      const users = await this.usersAccessService.getUsersByRegistrant(
+        currentUser.email
+      );
 
-      const users: UserAccess[] =
-        await this.usersAccessService.getUsersByRegistrant(currentUser.email);
-
-      // Tabla
-      this.dataSource = users.map((user) => ({
+      const mapped = users.map((user) => ({
         ...user,
+        funcionNombre: this.funcionesMap.get(user.funcion) || '—',
         fecha: user.createdAt?.toDate
           ? user.createdAt.toDate().toLocaleDateString()
           : '—',
       }));
 
-      // Contadores
+      this.allUsers = mapped;
+      this.filteredUsers = mapped;
+
+      // opciones únicas
+      this.uniqueFunciones = [
+        ...new Set(mapped.map(u => u.funcion))
+      ];
+
       this.totalUsuarios = users.length;
-      this.usuariosAprobados = users.filter(
-        (u) => u.estatus === 'aprobado'
-      ).length;
-      this.usuariosRechazados = users.filter(
-        (u) => u.estatus === 'rechazado'
-      ).length;
+      this.usuariosAprobados = users.filter(u => u.estatus === 'aprobado').length;
+      this.usuariosRechazados = users.filter(u => u.estatus === 'rechazado').length;
+
     } catch (error) {
       console.error('Error cargando usuarios', error);
     }
   }
 
+  applyFilters(): void {
+    let filtered = [...this.allUsers];
 
+    if (this.filters.estado) {
+      filtered = filtered.filter(
+        u => u.estatus === this.filters.estado
+      );
+    }
+
+    if (this.filters.funcion) {
+      filtered = filtered.filter(
+        u => u.funcion === this.filters.funcion
+      );
+    }
+
+    this.filteredUsers = filtered;
+  }
 
 
   ngOnInit() {
@@ -337,6 +445,7 @@ export class UserDashboardComponent {
       }
     });
 
+    this.loadFunciones();
     this.loadUsers();
     this.loadJornadaActiva();
   }
@@ -356,6 +465,7 @@ export class UserDashboardComponent {
       console.error('Error al cerrar sesión:', error);
     }
   }
+
 
   getEstadoClass(estado: string): string {
     const classes: any = {
