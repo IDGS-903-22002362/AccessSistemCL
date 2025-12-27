@@ -232,6 +232,9 @@ export class LoginComponent {
           case 'AdminArea':
             this.router.navigate(['/admin-area']);
             break;
+          case 'AdminEspecial':
+            this.router.navigate(['/admin-area']);
+            break;
           default:
             this.errorMessage = 'Rol no reconocido. Contacte al administrador.';
             this.loadingRole = false;
