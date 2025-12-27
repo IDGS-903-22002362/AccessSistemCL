@@ -22,6 +22,7 @@ import {
   UsersAccesService,
   UserAccess,
 } from '../../core/services/usersSolicitud.service';
+import { UserJornadaComponent } from '../user/user-jornada.component';
 
 @Component({
   selector: 'app-admin-area-dashboard',
@@ -37,6 +38,7 @@ import {
     MatDialogModule,
     FormsModule,
     HttpClientModule,
+    UserJornadaComponent,
   ],
   template: `
     <div class="min-h-screen bg-white p-6">
@@ -103,6 +105,12 @@ import {
             <p class="text-gray-600 mt-2">Rechazadas</p>
           </mat-card>
         </div>
+        <div class="mt-8 flex justify-center">
+
+        <!--Componente de jornadas -->
+        <app-user-jornada></app-user-jornada>
+  
+</div>
 
         <mat-card class="mt-8 p-6 border-2 border-[#007A53]">
           <div class="flex justify-between items-center mb-4">
@@ -865,5 +873,8 @@ export class AdminAreaDashboardComponent implements OnInit {
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
+  }
+  goToRegistro() {
+    this.router.navigate(['/user/registro']);
   }
 }

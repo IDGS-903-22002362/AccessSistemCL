@@ -9,6 +9,10 @@ import {
   deleteDoc,
   Timestamp,
 } from '@angular/fire/firestore';
+import { documentId } from '@angular/fire/firestore';
+import { query, where } from 'firebase/firestore';
+import { AuthService } from './auth.service';
+import { UsersService } from './users.service';
 
 export interface Empresa {
   id?: string;
@@ -24,6 +28,8 @@ export interface Empresa {
 export class EmpresasService {
   private firestore = inject(Firestore);
   private collectionName = 'empresas';
+  private authService = inject(AuthService);
+  private usersService = inject(UsersService);
 
   /**
    * Crear empresa
@@ -65,6 +71,64 @@ export class EmpresasService {
       throw error;
     }
   }
+
+  async getEmpresasByIds(empresaIds: string[]): Promise<Empresa[]> {
+    if (!empresaIds.length) {
+      return [];
+    }
+
+    const empresasCollection = collection(this.firestore, this.collectionName);
+
+    const q = query(
+      empresasCollection,
+      where(documentId(), 'in', empresaIds)
+    );
+
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Empresa[];
+  }
+  async getEmpresasPorUsuarioLogueado(): Promise<Empresa[]> {
+    const authUser = this.authService.getCurrentUser();
+
+    if (!authUser?.email) {
+      throw new Error('Usuario no autenticado');
+    }
+
+    const userData = await this.usersService.getUserByEmail(authUser.email);
+
+    if (!userData) {
+      return [];
+    }
+
+    if (userData.role === 'SUPER_ADMIN') {
+      return this.getEmpresas();
+    }
+
+    if (userData.role === 'ADMIN_AREA') {
+      if (!userData.empresaId) {
+        return [];
+      }
+
+      return this.getEmpresasByIds([userData.empresaId]);
+    }
+
+    if (userData.role === 'EMPRESA') {
+      if (!userData.empresaId) {
+        return [];
+      }
+
+      return this.getEmpresasByIds([userData.empresaId]);
+    }
+
+    return [];
+  }
+
+
+
 
   /**
    * Actualizar empresa

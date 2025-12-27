@@ -74,6 +74,9 @@ export const roleGuard: CanActivateFn = async (route, state) => {
       case 'AdminArea':
         router.navigate(['/admin-area']);
         break;
+      case 'AdminEspecial':
+        router.navigate(['/admin-area']);
+        break;
       default:
         router.navigate(['/login']);
     }
@@ -118,7 +121,7 @@ export const adminGuard: CanActivateFn = async (route, state) => {
     const roles = await rolesService.getRoles();
     const userRole = roles.find((r) => r.id === userData.role);
 
-    if (userRole?.name === 'AdminArea') {
+    if (userRole?.name === 'AdminArea' || userRole?.name === 'AdminEspecial') {
       return true;
     }
 

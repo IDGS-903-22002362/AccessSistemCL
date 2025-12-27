@@ -12,15 +12,13 @@ import {
   UsersAccesService,
   UserAccess,
 } from '../../core/services/usersSolicitud.service';
-import {
-  JornadaActivaService,
-  JornadaActiva,
-} from '../../core/services/jornadas.service';
 import { take } from 'rxjs/operators';
 import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { UserJornadaComponent } from '../user/user-jornada.component';
+
 
 
 
@@ -36,7 +34,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     MatCardModule,
     MatTableModule,
     FormsModule,          // ✅ NECESARIO PARA ngModel
-    MatCheckboxModule,    // (opcional, ya lo importaste)
+    MatCheckboxModule,
+    UserJornadaComponent,    // (opcional, ya lo importaste)
   ],
 
   template: `
@@ -100,80 +99,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
             </mat-card-content>
           </mat-card>
         </div>
+<!--Componente de jornadas -->
+        <app-user-jornada></app-user-jornada>
 
-<!-- Card Jornada Activa -->
-<mat-card
-  *ngIf="jornadaActiva"
-  class="mb-8 shadow-xl rounded-2xl overflow-hidden border border-gray-100"
->
-  <!-- Header -->
-  <div class="px-6 py-4 flex items-center justify-between" style="background-color:#007A53">
-    <div class="text-white">
-      <h2 class="text-xl font-bold">
-        Jornada {{ jornadaActiva.jornada }}
-      </h2>
-      <p class="text-sm opacity-90">
-        {{ jornadaActiva.fecha }} · {{ jornadaActiva.hora }}
-      </p>
-    </div>
 
-            <span
-              class="bg-white text-green-700 px-4 py-1 rounded-full text-sm font-semibold flex items-center"
-            >
-              <mat-icon class="mr-1 text-sm">sports_soccer</mat-icon>
-              Partido Activo
-            </span>
-          </div>
 
-          <!-- Content -->
-          <mat-card-content class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
-              <!-- Local -->
-              <div class="text-center">
-                <p class="text-gray-500 text-sm mb-1">Local</p>
-                <h3 class="text-2xl font-bold text-gray-900">
-                  {{ jornadaActiva.equipo_local }}
-                </h3>
-              </div>
-
-              <!-- VS -->
-              <div class="text-center">
-                <span class="text-3xl font-extrabold text-gray-400">VS</span>
-              </div>
-
-              <!-- Visitante -->
-              <div class="text-center">
-                <p class="text-gray-500 text-sm mb-1">Visitante</p>
-                <h3 class="text-2xl font-bold text-gray-900">
-                  {{ jornadaActiva.equipo_visitante }}
-                </h3>
-              </div>
-            </div>
-
-            <!-- Info -->
-            <div
-              class="mt-6 flex flex-col sm:flex-row justify-between items-center bg-gray-50 rounded-xl p-4"
-            >
-              <div class="flex items-center text-gray-700 mb-2 sm:mb-0">
-                <mat-icon class="mr-2 text-green-600">location_on</mat-icon>
-                <span class="font-medium">{{ jornadaActiva.estadio }}</span>
-              </div>
-
-      <div class="flex items-center text-gray-700">
-        <mat-icon class="mr-2 text-green-600">schedule</mat-icon>
-        <span>{{ jornadaActiva.hora }}</span>
-      </div>
-    </div>
-    <!--
-    <button
-      ngIf="jornadaActiva"
-      mat-raised-button
-      color="primary"
-      (click)="goToRegistro()"
-    >
-      Registrar usuarios
-    </button>
--->
 <div class="mt-8 flex justify-center">
   <button
     mat-raised-button
@@ -183,9 +113,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     Registrar usuarios
   </button>
 </div>
-
-  </mat-card-content>
-</mat-card>
 
 
 
@@ -362,21 +289,6 @@ export class UserDashboardComponent {
   totalUsuarios = 0;
   usuariosAprobados = 0;
   usuariosRechazados = 0;
-  private jornadaService = inject(JornadaActivaService);
-
-  jornadaActiva?: JornadaActiva;
-
-
-
-  loadJornadaActiva(): void {
-    this.jornadaService.getJornadasActivas$().pipe(take(1)).subscribe({
-      next: jornadas => {
-        console.log('Jornadas activas:', jornadas);
-        this.jornadaActiva = jornadas.length > 0 ? jornadas[0] : undefined;
-      },
-      error: err => console.error(err)
-    });
-  }
 
 
 
@@ -447,7 +359,6 @@ export class UserDashboardComponent {
 
     this.loadFunciones();
     this.loadUsers();
-    this.loadJornadaActiva();
   }
 
 

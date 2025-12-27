@@ -24,6 +24,8 @@ import {
 import { UsersAccesService } from '../../core/services/usersSolicitud.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService } from '../../core/services/users.service';
+import { Empresa } from '../../core/services/empresas.service';
+import { EmpresasService } from '../../core/services/empresas.service';
 
 @Component({
   selector: 'app-user-form',
@@ -74,6 +76,33 @@ import { UsersService } from '../../core/services/users.service';
 </div>
 
 
+<mat-card
+  *ngIf="canSelectEmpresa"
+  class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+>
+  <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
+    <mat-card-title class="text-white text-xl font-semibold !m-0">
+      <mat-icon class="mr-2 align-middle">business</mat-icon>
+      Empresa
+    </mat-card-title>
+  </div>
+
+  <mat-card-content class="p-6">
+    <form [formGroup]="empresaForm">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Seleccionar Empresa</mat-label>
+        <mat-select formControlName="empresaId">
+          <mat-option
+            *ngFor="let empresa of empresas"
+            [value]="empresa.id"
+          >
+            {{ empresa.nombre }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </mat-card-content>
+</mat-card>
 
 
         <!-- Sección de selección de área -->
@@ -596,8 +625,34 @@ export class UserFormComponent implements OnInit {
   private funcionesService = inject(FuncionesService);
   private usersAccessService = inject(UsersAccesService);
   private authService = inject(AuthService);
+  private empresasService = inject(EmpresasService);
+
   selectedFileName: string | null = null;
   showManualForm = false;
+  allowedApodos = ['fatima', 'palestina', 'jesus'];
+  canSelectEmpresa = false;
+
+
+  async checkEmpresaAccess() {
+    const authUser = this.authService.getCurrentUser();
+
+    if (!authUser?.email) {
+      this.canSelectEmpresa = false;
+      return;
+    }
+
+    const userData = await this.usersService.getUserByEmail(authUser.email);
+
+    if (!userData?.apodo) {
+      this.canSelectEmpresa = false;
+      return;
+    }
+
+    this.canSelectEmpresa = this.allowedApodos.includes(
+      userData.apodo.toLowerCase()
+    );
+  }
+
 
 
   goToDashboard(): void {
@@ -631,6 +686,20 @@ export class UserFormComponent implements OnInit {
   });
 
   private usersService = inject(UsersService);
+  empresas: Empresa[] = [];
+  empresaForm = this.fb.group({
+    empresaId: [''],
+  });
+
+
+  async loadEmpresas() {
+    try {
+      this.empresas = await this.empresasService.getEmpresasPorUsuarioLogueado();
+    } catch (error) {
+      console.error('Error cargando empresas:', error);
+      this.empresas = [];
+    }
+  }
 
   async loadAreasByUsuario() {
     const authUser = this.authService.getCurrentUser();
@@ -651,10 +720,35 @@ export class UserFormComponent implements OnInit {
     this.areas = await this.areasService.getAreasByIds(userData.areaIds);
   }
 
+  async loadPatrocinadoresByUsuario() {
+    const authUser = this.authService.getCurrentUser();
+
+    if (!authUser?.email) {
+      console.warn('Usuario no autenticado');
+      return;
+    }
+
+    const userData = await this.usersService.getUserByEmail(authUser.email);
+
+    if (!userData?.areaIds || userData.areaIds.length === 0) {
+      console.warn('Usuario sin empresas asignadas');
+      this.areas = [];
+      return;
+    }
+
+    this.areas = await this.areasService.getAreasByIds(userData.areaIds);
+  }
+
   async ngOnInit() {
     await this.loadAreasByUsuario();
     await this.loadFunciones();
+    await this.checkEmpresaAccess();
+
+    if (this.canSelectEmpresa) {
+      await this.loadEmpresas();
+    }
   }
+
 
   async loadFunciones() {
     try {
@@ -739,10 +833,7 @@ export class UserFormComponent implements OnInit {
       return;
     }
 
-    const areaId = this.areaForm.value.areaId;
-
     const authUser = this.authService.getCurrentUser();
-
     if (!authUser?.email) {
       alert('Sesión no válida');
       return;
@@ -750,22 +841,37 @@ export class UserFormComponent implements OnInit {
 
     const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
-    if (!leaderData?.empresaId) {
-      alert('El líder no tiene empresa asignada');
+    let empresaIdFinal: string | undefined;
+
+    if (this.canSelectEmpresa) {
+      empresaIdFinal = this.empresaForm.value.empresaId ?? undefined;
+      if (!empresaIdFinal) {
+        alert('Seleccione una empresa');
+        return;
+      }
+    } else {
+      empresaIdFinal = leaderData?.empresaId;
+    }
+
+    if (!empresaIdFinal) {
+      alert('No se pudo determinar la empresa');
       return;
     }
 
     for (const u of this.previewUsers) {
-      await this.usersAccessService.createUser({
-        ...u,
-        areaId,
-        empresaId: leaderData.empresaId,
-        estatus: 'pendiente', // pendiente
-      },
-        authUser.email);
+      await this.usersAccessService.createUser(
+        {
+          ...u,
+          areaId: this.areaForm.value.areaId,
+          empresaId: empresaIdFinal,
+          estatus: 'pendiente',
+        },
+        authUser.email
+      );
     }
 
     this.previewUsers = [];
     alert('Solicitudes enviadas correctamente');
   }
+
 }
