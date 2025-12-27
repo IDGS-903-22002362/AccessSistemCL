@@ -192,7 +192,9 @@ export class LoginComponent {
 
       try {
         const { email, password } = this.loginForm.value;
+        console.log('🔐 Intentando login con:', email);
         await this.authService.login(email, password);
+        console.log('✅ Login exitoso en Firebase Auth');
 
         // Redirección especial para super admin
         if (email === 'luisrosasbocanegra@gmail.com') {
@@ -204,9 +206,12 @@ export class LoginComponent {
         this.loading = false;
         this.loadingRole = true;
 
+        console.log('📋 Consultando datos del usuario en Firestore...');
         const userData = await this.usersService.getUserByEmail(email);
+        console.log('📋 Datos del usuario obtenidos:', userData);
 
         if (!userData || !userData.role) {
+          console.error('❌ Usuario sin rol asignado');
           this.errorMessage =
             'Usuario sin rol asignado. Contacte al administrador.';
           this.loadingRole = false;
@@ -214,10 +219,14 @@ export class LoginComponent {
           return;
         }
 
+        console.log('📚 Consultando roles disponibles...');
         const roles = await this.rolesService.getRoles();
+        console.log('📚 Roles obtenidos:', roles);
         const userRole = roles.find((r) => r.id === userData.role);
+        console.log('👤 Rol del usuario:', userRole);
 
         if (!userRole) {
+          console.error('❌ Rol no encontrado');
           this.errorMessage = 'Rol no válido. Contacte al administrador.';
           this.loadingRole = false;
           await this.authService.logout();
@@ -225,25 +234,61 @@ export class LoginComponent {
         }
 
         // Redirigir según el rol
-        switch (userRole.name) {
-          case 'Registrante':
-            this.router.navigate(['/user']);
-            break;
-          case 'AdminArea':
-            this.router.navigate(['/admin-area']);
-            break;
-          case 'AdminEspecial':
-            this.router.navigate(['/admin-area']);
-            break;
-          default:
-            this.errorMessage = 'Rol no reconocido. Contacte al administrador.';
-            this.loadingRole = false;
-            await this.authService.logout();
+        this.loadingRole = false;
+        console.log('🚀 Redirigiendo a:', userRole.name);
+
+        try {
+          switch (userRole.name) {
+            case 'Registrante':
+              console.log('➡️ Navegando a /user');
+              await this.router.navigate(['/user']);
+              console.log('✅ Navegación completada a /user');
+              break;
+            case 'AdminArea':
+              console.log('➡️ Navegando a /admin-area');
+              await this.router.navigate(['/admin-area']);
+              console.log('✅ Navegación completada a /admin-area');
+              break;
+            case 'AdminEspecial':
+              console.log('➡️ Navegando a /admin-area (AdminEspecial)');
+              const result = await this.router.navigate(['/admin-area']);
+              console.log('✅ Navegación completada:', result);
+              break;
+            default:
+              this.errorMessage =
+                'Rol no reconocido. Contacte al administrador.';
+              this.loadingRole = false;
+              await this.authService.logout();
+          }
+        } catch (navError) {
+          console.error('❌ Error en navegación:', navError);
+          this.errorMessage =
+            'Error al redirigir. Por favor recarga la página.';
         }
       } catch (error: any) {
-        this.errorMessage =
-          error.message ||
-          'Error al iniciar sesión. Verifica tus credenciales.';
+        console.error('❌ Error en login:', error);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error message:', error.message);
+
+        // Mensajes de error más específicos
+        let errorMsg = 'Error al iniciar sesión. Verifica tus credenciales.';
+
+        if (
+          error.code === 'permission-denied' ||
+          error.message?.includes('permission')
+        ) {
+          errorMsg = 'Error de permisos. Verifica las reglas de Firestore.';
+        } else if (
+          error.code === 'unavailable' ||
+          error.message?.includes('Failed to get document')
+        ) {
+          errorMsg =
+            'Error de conexión con Firestore. Verifica tu conexión a internet.';
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+
+        this.errorMessage = errorMsg;
         this.loading = false;
         this.loadingRole = false;
       }

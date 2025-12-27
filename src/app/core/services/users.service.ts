@@ -37,11 +37,14 @@ export class UsersService {
   async createUser(userData: Omit<User, 'id'>): Promise<string> {
     try {
       const usersCollection = collection(this.firestore, this.collectionName);
-      const docRef = await addDoc(usersCollection, {
+      // Normalizar email a minúsculas
+      const normalizedData = {
         ...userData,
+        email: userData.email.toLowerCase().trim(),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      });
+      };
+      const docRef = await addDoc(usersCollection, normalizedData);
       return docRef.id;
     } catch (error) {
       console.error('Error creando usuario:', error);
@@ -72,10 +75,13 @@ export class UsersService {
   async getUserByEmail(email: string): Promise<User | null> {
     try {
       const usersCollection = collection(this.firestore, this.collectionName);
-      const q = query(usersCollection, where('email', '==', email));
+      // Normalizar email a minúsculas para búsqueda case-insensitive
+      const normalizedEmail = email.toLowerCase().trim();
+      const q = query(usersCollection, where('email', '==', normalizedEmail));
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
+        console.log('⚠️ No se encontró usuario con email:', normalizedEmail);
         return null;
       }
 

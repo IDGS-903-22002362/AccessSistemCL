@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService, User } from '../../core/services/users.service';
+import { RolesService } from '../../core/services/roles.service';
 import { MailrelayService } from '../../core/services/mailrelay.service';
 import {
   FuncionesService,
@@ -106,11 +107,9 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
           </mat-card>
         </div>
         <div class="mt-8 flex justify-center">
-
-        <!--Componente de jornadas -->
-        <app-user-jornada></app-user-jornada>
-  
-</div>
+          <!--Componente de jornadas -->
+          <app-user-jornada></app-user-jornada>
+        </div>
 
         <mat-card class="mt-8 p-6 border-2 border-[#007A53]">
           <div class="flex justify-between items-center mb-4">
@@ -363,6 +362,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
 export class AdminAreaDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private usersService = inject(UsersService);
+  private rolesService = inject(RolesService);
   private funcionesService = inject(FuncionesService);
   private areasService = inject(AreasService);
   private usersAccessService = inject(UsersAccesService);
@@ -379,6 +379,7 @@ export class AdminAreaDashboardComponent implements OnInit {
   currentAdminData: User | null = null;
   adminAreas: string[] = [];
   adminFunciones: string[] = [];
+  isAdminEspecial = false;
 
   // Solicitudes
   allSolicitudes: UserAccess[] = [];
@@ -411,6 +412,7 @@ export class AdminAreaDashboardComponent implements OnInit {
 
   async ngOnInit() {
     console.log('🚀 Iniciando AdminArea Dashboard...');
+    this.loading = true;
     try {
       await this.loadFunciones();
       await this.loadAreas();
@@ -419,9 +421,11 @@ export class AdminAreaDashboardComponent implements OnInit {
         await this.loadSolicitudes();
       } else {
         console.warn('⚠️ No se cargarán solicitudes - sin permisos');
+        this.loading = false;
       }
     } catch (error) {
       console.error('❌ Error en ngOnInit:', error);
+      this.loading = false;
     }
   }
 
@@ -495,17 +499,31 @@ export class AdminAreaDashboardComponent implements OnInit {
       console.log('✅ Funciones del AdminArea:', this.adminFunciones);
       console.log('✅ Funciones length:', this.adminFunciones.length);
 
-      // Verificar que tenga al menos un área y una función asignada
-      this.hasPermissions =
-        this.adminAreas.length > 0 && this.adminFunciones.length > 0;
+      // Verificar si es AdminEspecial
+      const roles = await this.rolesService.getRoles();
+      const userRole = roles.find((r) => r.id === this.currentAdminData?.role);
+      this.isAdminEspecial = userRole?.name === 'AdminEspecial';
 
-      console.log('🔍 Evaluación de permisos:', {
-        areasLength: this.adminAreas.length,
-        funcionesLength: this.adminFunciones.length,
-        condition1: this.adminAreas.length > 0,
-        condition2: this.adminFunciones.length > 0,
-        hasPermissions: this.hasPermissions,
-      });
+      console.log('👤 Rol del usuario:', userRole?.name);
+      console.log('🔑 Es AdminEspecial:', this.isAdminEspecial);
+
+      // AdminEspecial tiene acceso completo sin restricciones
+      // Para otros roles, verificar que tengan al menos un área y una función
+      if (this.isAdminEspecial) {
+        this.hasPermissions = true;
+        console.log('✅ AdminEspecial detectado: acceso completo otorgado');
+      } else {
+        this.hasPermissions =
+          this.adminAreas.length > 0 && this.adminFunciones.length > 0;
+
+        console.log('🔍 Evaluación de permisos:', {
+          areasLength: this.adminAreas.length,
+          funcionesLength: this.adminFunciones.length,
+          condition1: this.adminAreas.length > 0,
+          condition2: this.adminFunciones.length > 0,
+          hasPermissions: this.hasPermissions,
+        });
+      }
 
       // ✅ Actualizar título con apodo
       if (this.currentAdminData.apodo) {
@@ -525,6 +543,7 @@ export class AdminAreaDashboardComponent implements OnInit {
   async loadSolicitudes() {
     if (!this.hasPermissions) {
       console.log('⚠️ No se cargan solicitudes porque no tiene permisos');
+      this.loading = false;
       return;
     }
 
@@ -536,17 +555,10 @@ export class AdminAreaDashboardComponent implements OnInit {
         '📥 Total de solicitudes en Firestore:',
         this.allSolicitudes.length
       );
-      console.log('📥 Solicitudes completas:', this.allSolicitudes);
 
-      // Filtrar en memoria según areaId AND funcion
+      // Filtrar en memoria según permisos
       this.filteredSolicitudes = this.allSolicitudes.filter((solicitud) => {
-        const canView = this.canViewSolicitud(solicitud);
-        console.log(`🔍 Solicitud ${solicitud.nombre}:`, {
-          areaId: solicitud.areaId,
-          funcion: solicitud.funcion,
-          canView: canView,
-        });
-        return canView;
+        return this.canViewSolicitud(solicitud);
       });
 
       console.log('✅ Solicitudes filtradas:', this.filteredSolicitudes.length);
@@ -667,9 +679,15 @@ export class AdminAreaDashboardComponent implements OnInit {
 
   /**
    * Verificar si el AdminArea puede ver esta solicitud
-   * Regla: areaId debe estar en adminAreas AND funcion debe estar en adminFunciones
+   * Regla: AdminEspecial puede ver todas las solicitudes
+   * Otros roles: areaId debe estar en adminAreas AND funcion debe estar en adminFunciones
    */
   private canViewSolicitud(solicitud: UserAccess): boolean {
+    // AdminEspecial puede ver todas las solicitudes
+    if (this.isAdminEspecial) {
+      return true;
+    }
+
     if (!solicitud.areaId || !solicitud.funcion) {
       console.log('❌ Solicitud sin areaId o funcion:', solicitud);
       return false;

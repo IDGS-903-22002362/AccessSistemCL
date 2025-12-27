@@ -150,6 +150,7 @@ import {
                     }
                   </mat-form-field>
 
+                  @if (!hideEmpresaAndAreasFields) {
                   <mat-form-field class="w-full">
                     <mat-label>Empresa</mat-label>
                     <mat-select formControlName="empresaId">
@@ -171,8 +172,7 @@ import {
                       }
                     </mat-select>
                   </mat-form-field>
-
-                  @if (showFuncionesField) {
+                  } @if (showFuncionesField) {
                   <mat-form-field class="w-full md:col-span-2">
                     <mat-label>Funciones (para AdminArea)</mat-label>
                     <mat-select formControlName="funcionIds" multiple>
@@ -673,6 +673,7 @@ export class UserManagementComponent implements OnInit {
 
   creatingUser = false;
   showFuncionesField = false;
+  hideEmpresaAndAreasFields = false;
   emailValidationMessage = '';
 
   userColumns = [
@@ -746,6 +747,16 @@ export class UserManagementComponent implements OnInit {
     const selectedRoleId = this.userForm.get('role')?.value;
     const selectedRole = this.roles.find((r) => r.id === selectedRoleId);
     this.showFuncionesField = selectedRole?.name === 'AdminArea';
+    this.hideEmpresaAndAreasFields = selectedRole?.name === 'AdminEspecial';
+
+    // Limpiar campos cuando es AdminEspecial
+    if (this.hideEmpresaAndAreasFields) {
+      this.userForm.patchValue({
+        empresaId: '',
+        areaIds: [],
+        funcionIds: [],
+      });
+    }
 
     if (!this.showFuncionesField) {
       this.userForm.patchValue({ funcionIds: [] });
@@ -812,15 +823,38 @@ export class UserManagementComponent implements OnInit {
         }
       }
 
-      // Guardar metadata en Firestore (para ambos casos)
-      await this.usersService.createUser({
+      // Verificar si el rol es AdminEspecial para asignar todos los permisos
+      const selectedRole = this.roles.find((r) => r.id === formValue.role);
+      let areaIds = formValue.areaIds || [];
+      let funcionIds = formValue.funcionIds || [];
+
+      if (selectedRole?.name === 'AdminEspecial') {
+        // AdminEspecial tiene acceso a todas las áreas y funciones
+        areaIds = this.areas.map((area) => area.id!);
+        funcionIds = this.funciones.map((funcion) => funcion.id!);
+        console.log(
+          'AdminEspecial detectado: asignando todas las áreas y funciones'
+        );
+      }
+
+      // Construir objeto de usuario solo con campos válidos (Firestore no acepta undefined)
+      const userData: any = {
         email: formValue.email,
-        apodo: formValue.apodo || undefined,
         role: formValue.role,
-        empresaId: formValue.empresaId || undefined,
-        areaIds: formValue.areaIds || [],
-        funcionIds: formValue.funcionIds || [],
-      });
+        areaIds: areaIds,
+        funcionIds: funcionIds,
+      };
+
+      // Solo agregar campos opcionales si tienen valores
+      if (formValue.apodo) {
+        userData.apodo = formValue.apodo;
+      }
+      if (formValue.empresaId) {
+        userData.empresaId = formValue.empresaId;
+      }
+
+      // Guardar metadata en Firestore
+      await this.usersService.createUser(userData);
 
       const message = userExistedInAuth
         ? 'Usuario vinculado exitosamente (ya existía en Firebase Auth)'
@@ -829,6 +863,7 @@ export class UserManagementComponent implements OnInit {
 
       this.userForm.reset();
       this.showFuncionesField = false;
+      this.hideEmpresaAndAreasFields = false;
       this.emailValidationMessage = '';
       await this.loadData();
     } catch (error: any) {

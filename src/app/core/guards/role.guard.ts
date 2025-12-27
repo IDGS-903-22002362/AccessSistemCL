@@ -93,38 +93,49 @@ export const roleGuard: CanActivateFn = async (route, state) => {
  * Guard específico para administradores de área
  */
 export const adminGuard: CanActivateFn = async (route, state) => {
+  console.log('🛡️ adminGuard: Verificando acceso a', state.url);
   const auth = inject(Auth);
   const router = inject(Router);
   const usersService = inject(UsersService);
   const rolesService = inject(RolesService);
 
   const user = auth.currentUser;
+  console.log('🛡️ adminGuard: Usuario actual:', user?.email);
 
   if (!user || !user.email) {
+    console.log('🛡️ adminGuard: No hay usuario, redirigiendo a login');
     router.navigate(['/login']);
     return false;
   }
 
   // Super admin tiene acceso
   if (user.email === SUPER_ADMIN_EMAIL) {
+    console.log('🛡️ adminGuard: Super admin detectado, acceso permitido');
     return true;
   }
 
   try {
+    console.log('🛡️ adminGuard: Consultando datos del usuario...');
     const userData = await usersService.getUserByEmail(user.email);
+    console.log('🛡️ adminGuard: Datos del usuario:', userData);
 
     if (!userData || !userData.role) {
+      console.log('🛡️ adminGuard: Sin rol, redirigiendo a login');
       router.navigate(['/login']);
       return false;
     }
 
+    console.log('🛡️ adminGuard: Consultando roles...');
     const roles = await rolesService.getRoles();
     const userRole = roles.find((r) => r.id === userData.role);
+    console.log('🛡️ adminGuard: Rol del usuario:', userRole?.name);
 
     if (userRole?.name === 'AdminArea' || userRole?.name === 'AdminEspecial') {
+      console.log('🛡️ adminGuard: ✅ Acceso permitido para', userRole.name);
       return true;
     }
 
+    console.log('🛡️ adminGuard: ❌ Acceso denegado, rol no autorizado');
     // Redirigir según rol
     if (userRole?.name === 'Registrante') {
       router.navigate(['/user']);
@@ -134,7 +145,7 @@ export const adminGuard: CanActivateFn = async (route, state) => {
 
     return false;
   } catch (error) {
-    console.error('Error en adminGuard:', error);
+    console.error('🛡️ adminGuard: ❌ Error:', error);
     router.navigate(['/login']);
     return false;
   }
