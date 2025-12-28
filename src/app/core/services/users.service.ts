@@ -11,6 +11,7 @@ import {
   where,
   Timestamp,
 } from '@angular/fire/firestore';
+import { getDoc } from 'firebase/firestore';
 
 export interface User {
   id?: string;
@@ -144,4 +145,20 @@ export class UsersService {
       throw error;
     }
   }
+
+  async getUserWithRoleNameByEmail(email: string) {
+    const user = await this.getUserByEmail(email);
+
+    if (!user?.role) return null;
+
+    const roleSnap = await getDoc(doc(this.firestore, 'roles', user.role));
+
+    if (!roleSnap.exists()) return null;
+
+    return {
+      ...user,
+      roleName: roleSnap.data()['name']
+    };
+  }
+
 }
