@@ -629,29 +629,22 @@ export class UserFormComponent implements OnInit {
 
   selectedFileName: string | null = null;
   showManualForm = false;
-  allowedApodos = ['fatima', 'palestina', 'jesus'];
   canSelectEmpresa = false;
 
 
   async checkEmpresaAccess() {
     const authUser = this.authService.getCurrentUser();
+    if (!authUser?.email) return;
 
-    if (!authUser?.email) {
-      this.canSelectEmpresa = false;
-      return;
-    }
+    const userData = await this.usersService.getUserWithRoleNameByEmail(authUser.email);
 
-    const userData = await this.usersService.getUserByEmail(authUser.email);
+    console.log('USER DATA RESUELTO:', userData);
 
-    if (!userData?.apodo) {
-      this.canSelectEmpresa = false;
-      return;
-    }
-
-    this.canSelectEmpresa = this.allowedApodos.includes(
-      userData.apodo.toLowerCase()
-    );
+    this.canSelectEmpresa = userData?.roleName === 'AdminEspecial';
   }
+
+
+
 
 
 
@@ -743,11 +736,9 @@ export class UserFormComponent implements OnInit {
     await this.loadAreasByUsuario();
     await this.loadFunciones();
     await this.checkEmpresaAccess();
-
-    if (this.canSelectEmpresa) {
-      await this.loadEmpresas();
-    }
+    await this.loadEmpresas();
   }
+
 
 
   async loadFunciones() {
@@ -790,7 +781,10 @@ export class UserFormComponent implements OnInit {
   }
 
   parseCSV(csv: string) {
-    const lines = csv.split('\n').filter(l => l.trim());
+    const lines = csv
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#'));
 
     const headers = lines[0]
       .split(',')
@@ -798,10 +792,32 @@ export class UserFormComponent implements OnInit {
 
     lines.slice(1).forEach((line) => {
       const values = line.split(',');
-      const user: any = {};
+      const user: any = {
+        funcionId: '', // 👈 SIEMPRE inicializado
+      };
 
       headers.forEach((h, i) => {
-        user[h] = values[i]?.trim() || '';
+        let value = values[i]?.trim() || '';
+
+        // Limpieza email
+        if (h === 'email') {
+          value = value
+            .replace(/^=HYPERLINK\("mailto:/i, '')
+            .replace(/".*$/, '')
+            .replace(/"/g, '');
+        }
+
+        // 🔥 FUNCION → ID (y NO guardamos el texto)
+        if (h === 'funcion') {
+          const funcionEncontrada = this.funciones.find(
+            f => f.nombre.toLowerCase() === value.toLowerCase()
+          );
+
+          user.funcionId = funcionEncontrada?.id || '';
+          return; // ⛔ NO guardes "funcion"
+        }
+
+        user[h] = value;
       });
 
       this.previewUsers.push(user);
@@ -809,6 +825,7 @@ export class UserFormComponent implements OnInit {
 
     this.previewUsers = [...this.previewUsers];
   }
+
 
 
   addManualUser() {
@@ -857,18 +874,32 @@ export class UserFormComponent implements OnInit {
       alert('No se pudo determinar la empresa');
       return;
     }
+    const estatusInicial: 'pendiente' | 'aprobado' =
+      this.canSelectEmpresa ? 'aprobado' : 'pendiente';
+
 
     for (const u of this.previewUsers) {
+
+      const userData: any = {
+        ...u,
+        areaId: this.areaForm.value.areaId,
+        empresaId: empresaIdFinal,
+        estatus: this.canSelectEmpresa ? 'aprobado' : 'pendiente',
+      };
+
+      // 👉 SOLO si es AdminEspecial
+      if (this.canSelectEmpresa) {
+        userData.reviewedBy = authUser.email;
+        userData.reviewedAt = new Date();
+      }
+
       await this.usersAccessService.createUser(
-        {
-          ...u,
-          areaId: this.areaForm.value.areaId,
-          empresaId: empresaIdFinal,
-          estatus: 'pendiente',
-        },
+        userData,
         authUser.email
       );
     }
+
+
 
     this.previewUsers = [];
     alert('Solicitudes enviadas correctamente');

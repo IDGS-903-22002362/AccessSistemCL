@@ -98,34 +98,23 @@ export class EmpresasService {
       throw new Error('Usuario no autenticado');
     }
 
-    const userData = await this.usersService.getUserByEmail(authUser.email);
+    const userData =
+      await this.usersService.getUserWithRoleNameByEmail(authUser.email);
 
-    if (!userData) {
+    if (!userData?.roleName) {
       return [];
     }
 
-    if (userData.role === 'SUPER_ADMIN') {
-      return this.getEmpresas();
+    // 🔑 SOLO AdminEspecial puede elegir empresa
+    if (userData.roleName === 'AdminEspecial') {
+      return this.getEmpresas(); // 👈 TODAS las empresas
     }
 
-    if (userData.role === 'ADMIN_AREA') {
-      if (!userData.empresaId) {
-        return [];
-      }
 
-      return this.getEmpresasByIds([userData.empresaId]);
-    }
-
-    if (userData.role === 'EMPRESA') {
-      if (!userData.empresaId) {
-        return [];
-      }
-
-      return this.getEmpresasByIds([userData.empresaId]);
-    }
-
+    // Otros roles NO ven selector
     return [];
   }
+
 
 
 

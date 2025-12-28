@@ -39,7 +39,7 @@ export const registranteGuard: CanActivateFn = async (route, state) => {
     const roles = await rolesService.getRoles();
     const userRole = roles.find((r) => r.id === userData.role);
 
-    if (userRole?.name === 'Registrante') {
+    if (userRole?.name === 'Registrante' || userRole?.name === 'AdminArea' || userRole?.name === 'AdminEspecial') {
       return true;
     }
 
