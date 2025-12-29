@@ -781,25 +781,22 @@ export class UserFormComponent implements OnInit {
   }
 
   parseCSV(csv: string) {
+    const errors: string[] = [];
+
     const lines = csv
       .split('\n')
       .map(l => l.trim())
       .filter(l => l && !l.startsWith('#'));
 
-    const headers = lines[0]
-      .split(',')
-      .map(h => h.trim().replace('\r', ''));
+    const headers = lines[0].split(',').map(h => h.trim());
 
-    lines.slice(1).forEach((line) => {
+    lines.slice(1).forEach((line, index) => {
       const values = line.split(',');
-      const user: any = {
-        funcionId: '', // 👈 SIEMPRE inicializado
-      };
+      const user: any = {};
 
       headers.forEach((h, i) => {
         let value = values[i]?.trim() || '';
 
-        // Limpieza email
         if (h === 'email') {
           value = value
             .replace(/^=HYPERLINK\("mailto:/i, '')
@@ -807,14 +804,19 @@ export class UserFormComponent implements OnInit {
             .replace(/"/g, '');
         }
 
-        // 🔥 FUNCION → ID (y NO guardamos el texto)
         if (h === 'funcion') {
           const funcionEncontrada = this.funciones.find(
             f => f.nombre.toLowerCase() === value.toLowerCase()
           );
 
-          user.funcionId = funcionEncontrada?.id || '';
-          return; // ⛔ NO guardes "funcion"
+          if (!funcionEncontrada) {
+            errors.push(
+              `Línea ${index + 2}: la función "${value}" no existe`
+            );
+          } else {
+            user.funcion = funcionEncontrada.id;
+          }
+          return;
         }
 
         user[h] = value;
@@ -823,8 +825,18 @@ export class UserFormComponent implements OnInit {
       this.previewUsers.push(user);
     });
 
+    if (errors.length) {
+      alert(
+        'Errores encontrados en el archivo:\n\n' +
+        errors.join('\n')
+      );
+      this.previewUsers = [];
+      return;
+    }
+
     this.previewUsers = [...this.previewUsers];
   }
+
 
 
 
