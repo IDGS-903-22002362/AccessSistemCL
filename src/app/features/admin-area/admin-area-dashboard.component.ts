@@ -793,7 +793,7 @@ export class AdminAreaDashboardComponent implements OnInit {
 
     if (exitosos > 0) {
       alert(
-        `✅ Aprobadas: ${exitosos}\n❌ Fallidas: ${fallidos}\n\n⚠️ Nota: Los correos no se envían debido a restricciones CORS.\nPara habilitar envío de correos, implementa Firebase Cloud Functions.`
+        `Aprobadas: ${exitosos}\nFallidas: ${fallidos}\n\n Nota: Los correos no se envían debido a restricciones CORS.\nPara habilitar envío de correos, hay implementar Firebase Cloud Functions.`
       );
     } else {
       alert(`❌ No se pudo aprobar ninguna solicitud. Fallidas: ${fallidos}`);
