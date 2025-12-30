@@ -8,12 +8,12 @@ import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService, User } from '../../core/services/users.service';
 import { RolesService } from '../../core/services/roles.service';
-import { MailrelayService } from '../../core/services/mailrelay.service';
 import {
   FuncionesService,
   Funcion,
@@ -37,6 +37,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
     MatChipsModule,
     MatCheckboxModule,
     MatDialogModule,
+    MatTooltipModule,
     FormsModule,
     HttpClientModule,
     UserJornadaComponent,
@@ -205,35 +206,6 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
             </div>
           </div>
 
-          <!-- Botones de Acción Masiva -->
-          <div
-            *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
-            class="flex gap-2 mb-4"
-          >
-            <button
-              mat-raised-button
-              (click)="aprobarSeleccionadas()"
-              [disabled]="selectedSolicitudes.size === 0 || processing"
-              class="!bg-[#007A53] !text-white hover:!bg-[#006644]"
-            >
-              <mat-icon>check</mat-icon>
-              <span class="ml-2"
-                >Aprobar Seleccionadas ({{ selectedSolicitudes.size }})</span
-              >
-            </button>
-            <button
-              mat-raised-button
-              (click)="rechazarSeleccionadas()"
-              [disabled]="selectedSolicitudes.size === 0 || processing"
-              class="!bg-red-600 !text-white hover:!bg-red-700"
-            >
-              <mat-icon>close</mat-icon>
-              <span class="ml-2"
-                >Rechazar Seleccionadas ({{ selectedSolicitudes.size }})</span
-              >
-            </button>
-          </div>
-
           <div *ngIf="loading" class="text-center py-8">
             <p class="text-gray-600">Cargando solicitudes...</p>
           </div>
@@ -266,15 +238,6 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
               <thead class="bg-[#007A53] text-white">
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    <mat-checkbox
-                      [(ngModel)]="selectAll"
-                      (change)="toggleSelectAll()"
-                      [disabled]="getPendienteCount() === 0"
-                      class="text-white"
-                    >
-                    </mat-checkbox>
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Nombre
                   </th>
                   <th class="px-4 py-3 text-left text-xs font-medium uppercase">
@@ -292,6 +255,9 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   <th class="px-4 py-3 text-left text-xs font-medium uppercase">
                     Estado
                   </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    PDF
+                  </th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -301,17 +267,6 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
                   [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
                 >
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <mat-checkbox
-                      *ngIf="
-                        canManageSolicitud(solicitud) &&
-                        solicitud.estatus === 'pendiente'
-                      "
-                      [checked]="selectedSolicitudes.has(solicitud.id!)"
-                      (change)="toggleSelection(solicitud.id!)"
-                    >
-                    </mat-checkbox>
-                  </td>
                   <td class="px-4 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">
                       {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
@@ -349,6 +304,26 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                       {{ solicitud.estatus }}
                     </span>
                   </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-center">
+                    <button
+                      *ngIf="
+                        solicitud.estatus === 'aprobado' && solicitud.pdfUrl
+                      "
+                      mat-icon-button
+                      color="primary"
+                      (click)="downloadPDF(solicitud.pdfUrl, solicitud.nombre)"
+                      matTooltip="Descargar acreditación"
+                    >
+                      <mat-icon>download</mat-icon>
+                    </button>
+                    <span
+                      *ngIf="
+                        !(solicitud.estatus === 'aprobado' && solicitud.pdfUrl)
+                      "
+                      class="text-gray-400"
+                      >-</span
+                    >
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -366,7 +341,6 @@ export class AdminAreaDashboardComponent implements OnInit {
   private funcionesService = inject(FuncionesService);
   private areasService = inject(AreasService);
   private usersAccessService = inject(UsersAccesService);
-  private mailrelayService = inject(MailrelayService);
   private router = inject(Router);
 
   // Estado del componente
@@ -751,29 +725,15 @@ export class AdminAreaDashboardComponent implements OnInit {
 
       try {
         // Actualizar en Firestore
+        // ✅ El correo se enviará automáticamente por Cloud Function
         await this.usersAccessService.updateUser(id, {
           estatus: 'aprobado',
           reviewedBy: reviewerEmail,
           reviewedAt: new Date(),
         });
 
-        // Enviar correo
-        this.mailrelayService
-          .sendAcceptTestEmail(
-            solicitud.email,
-            `${solicitud.nombre} ${solicitud.apellidoPaterno}`
-          )
-          .subscribe({
-            next: () => console.log('✅ Correo enviado a:', solicitud.email),
-            error: (err) => {
-              console.error('❌ Error enviando correo:', err);
-              if (err.status === 0) {
-                console.warn(
-                  '⚠️ Error CORS: El servidor de Mailrelay no permite peticiones directas desde el navegador. Necesitas usar Firebase Cloud Functions o un servidor proxy.'
-                );
-              }
-            },
-          });
+        console.log('✅ Solicitud aprobada:', solicitud.email);
+        console.log('📧 Cloud Function enviará el correo automáticamente');
 
         // Actualizar localmente
         solicitud.estatus = 'aprobado';
@@ -793,7 +753,7 @@ export class AdminAreaDashboardComponent implements OnInit {
 
     if (exitosos > 0) {
       alert(
-        `Aprobadas: ${exitosos}\nFallidas: ${fallidos}\n\n Nota: Los correos no se envían debido a restricciones CORS.\nPara habilitar envío de correos, hay implementar Firebase Cloud Functions.`
+        `✅ Aprobadas: ${exitosos}\n❌ Fallidas: ${fallidos}\n\n📧 Los correos se enviarán automáticamente por Cloud Functions.`
       );
     } else {
       alert(`❌ No se pudo aprobar ninguna solicitud. Fallidas: ${fallidos}`);
@@ -826,29 +786,15 @@ export class AdminAreaDashboardComponent implements OnInit {
 
       try {
         // Actualizar en Firestore
+        // ✅ El correo se enviará automáticamente por Cloud Function
         await this.usersAccessService.updateUser(id, {
           estatus: 'rechazado',
           reviewedBy: reviewerEmail,
           reviewedAt: new Date(),
         });
 
-        // Enviar correo
-        this.mailrelayService
-          .sendRejectTestEmail(
-            solicitud.email,
-            `${solicitud.nombre} ${solicitud.apellidoPaterno}`
-          )
-          .subscribe({
-            next: () => console.log('✅ Correo enviado a:', solicitud.email),
-            error: (err) => {
-              console.error('❌ Error enviando correo:', err);
-              if (err.status === 0) {
-                console.warn(
-                  '⚠️ Error CORS: El servidor Mailrelay bloquea peticiones directas desde el navegador. Solución: usar Firebase Cloud Functions.'
-                );
-              }
-            },
-          });
+        console.log('✅ Solicitud rechazada:', solicitud.email);
+        console.log('📧 Cloud Function enviará el correo automáticamente');
 
         // Actualizar localmente
         solicitud.estatus = 'rechazado';
@@ -892,7 +838,24 @@ export class AdminAreaDashboardComponent implements OnInit {
       console.error('Error al cerrar sesión:', error);
     }
   }
+
   goToRegistro() {
     this.router.navigate(['/user/registro']);
+  }
+
+  downloadPDF(pdfUrl: string, userName: string): void {
+    if (!pdfUrl) {
+      console.error('No hay URL de PDF disponible');
+      return;
+    }
+
+    // Crear un elemento anchor temporal para descargar
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.target = '_blank';
+    link.download = `acreditacion_${userName.replace(/\s+/g, '_')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

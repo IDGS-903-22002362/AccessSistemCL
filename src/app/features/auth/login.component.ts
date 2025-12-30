@@ -40,7 +40,7 @@ import { RolesService } from '../../core/services/roles.service';
             <img
               src="images/leon.png"
               alt="Logo"
-              class="w-32 h-auto mb-4 object-contain"
+              class="w-24 h-24 mb-4 object-contain"
             />
             <mat-card-title class="text-3xl font-bold text-gray-800 mb-2">
               Iniciar Sesión
@@ -133,17 +133,24 @@ import { RolesService } from '../../core/services/roles.service';
     `
       :host {
         display: block;
+        width: 100%;
+        height: 100vh;
         position: relative;
-        overflow: hidden;
       }
 
       .login-container {
+        width: 100%;
+        height: 100%;
+        min-height: 100vh;
         position: relative;
         z-index: 1;
         background-image: url('/images/_NCS4410.jpg');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .glass-card {
@@ -154,11 +161,55 @@ import { RolesService } from '../../core/services/roles.service';
 
       mat-card {
         padding: 2rem;
+        width: 100%;
+        max-width: 28rem;
+      }
+
+      mat-card-content {
+        padding: 0 1rem !important;
+      }
+
+      form {
+        width: 100%;
+      }
+
+      mat-form-field {
+        width: 100%;
       }
 
       mat-card-header {
+        display: flex !important;
         justify-content: center;
+        align-items: center;
         margin-bottom: 1.5rem;
+        padding: 1rem !important;
+        width: 100%;
+      }
+
+      mat-card-header > div {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      mat-card-header .mat-mdc-card-header-text {
+        display: none;
+      }
+
+      mat-card-header img {
+        max-width: 96px !important;
+        max-height: 96px !important;
+        width: 96px !important;
+        height: 96px !important;
+        object-fit: contain;
+        margin: 0 auto;
+      }
+
+      mat-card-title,
+      mat-card-subtitle {
+        text-align: center;
+        width: 100%;
       }
     `,
   ],
@@ -250,8 +301,8 @@ export class LoginComponent {
               console.log('✅ Navegación completada a /admin-area');
               break;
             case 'AdminEspecial':
-              console.log('➡️ Navegando a /admin-area (AdminEspecial)');
-              const result = await this.router.navigate(['/admin-area']);
+              console.log('➡️ Navegando a /user (AdminEspecial)');
+              const result = await this.router.navigate(['/user']);
               console.log('✅ Navegación completada:', result);
               break;
             default:

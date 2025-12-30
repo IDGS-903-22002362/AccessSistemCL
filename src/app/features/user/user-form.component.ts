@@ -15,7 +15,6 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 
-
 import { AreasService, Area } from '../../core/services/areas.service';
 import {
   FuncionesService,
@@ -42,74 +41,98 @@ import { EmpresasService } from '../../core/services/empresas.service';
     MatIconModule,
   ],
   template: `
-    <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="min-h-screen bg-white py-8 px-4 sm:px-6 lg:px-8">
       <div class="max-w-6xl mx-auto">
         <!-- Header -->
-<div class="mb-8 bg-[#007A53] p-6 rounded-lg">
-  <div class="flex items-center justify-between">
-    <!-- Izquierda: Logo + título -->
-    <div class="flex items-center gap-3 text-white">
-      <img
-        src="images/leon.png"
-        alt="Club León"
-        class="h-8 w-auto"
-      />
-      <h1 class="text-3xl font-bold">
-        Gestión de Usuarios
-      </h1>
-    </div>
+        <div class="mb-8 bg-[#007A53] p-6 rounded-2xl shadow-sm">
+          <div class="flex items-center justify-between">
+            <!-- Izquierda: Logo + título -->
+            <div class="flex items-center gap-3 text-white">
+              <img src="images/leon.png" alt="Club León" class="h-8 w-auto" />
+              <h1 class="text-3xl font-bold">Gestión de Usuarios</h1>
+            </div>
 
-    <!-- Derecha: Botón Dashboard -->
-    <button
-      mat-stroked-button
-      class="!border-white !text-white hover:!bg-white/10 !rounded-lg !px-4 !py-2 transition-all"
-      (click)="goToDashboard()"
-    >
-      <mat-icon class="mr-2">arrow_back</mat-icon>
-      Volver al Dashboard
-    </button>
-  </div>
+            <!-- Derecha: Botón Dashboard -->
+            <button
+              mat-stroked-button
+              class="!border-white !text-white hover:!bg-white/10 !rounded-lg !px-4 !py-2 transition-all"
+              (click)="goToDashboard()"
+            >
+              <mat-icon class="mr-2">arrow_back</mat-icon>
+              Volver al Dashboard
+            </button>
+          </div>
 
-  <p class="text-white/80 mt-2">
-    Registro de solicitud de accesos para usuarios.
-  </p>
-</div>
+          <p class="text-white/80 mt-2">
+            Registro de solicitud de accesos para usuarios.
+          </p>
+        </div>
 
-
-<mat-card
-  *ngIf="canSelectEmpresa"
-  class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
->
-  <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
-    <mat-card-title class="text-white text-xl font-semibold !m-0">
-      <mat-icon class="mr-2 align-middle">business</mat-icon>
-      Empresa
-    </mat-card-title>
-  </div>
-
-  <mat-card-content class="p-6">
-    <form [formGroup]="empresaForm">
-      <mat-form-field appearance="outline" class="w-full">
-        <mat-label>Seleccionar Empresa</mat-label>
-        <mat-select formControlName="empresaId">
-          <mat-option
-            *ngFor="let empresa of empresas"
-            [value]="empresa.id"
+        <!-- Notificaciones -->
+        <div
+          *ngIf="notifications.length"
+          class="notification-stack space-y-3"
+        >
+          <div
+            *ngFor="let note of notifications"
+            class="notification"
+            [class.notification-success]="note.type === 'success'"
+            [class.notification-error]="note.type === 'error'"
+            [class.notification-info]="note.type === 'info'"
+            role="status"
+            aria-live="polite"
           >
-            {{ empresa.nombre }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </form>
-  </mat-card-content>
-</mat-card>
+            <div class="notification-icon">
+              <mat-icon>{{ note.icon }}</mat-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-semibold text-gray-900">{{ note.title }}</p>
+              <p class="text-sm text-gray-600">{{ note.message }}</p>
+            </div>
+            <button
+              mat-icon-button
+              class="!text-gray-400 hover:!text-gray-600"
+              aria-label="Cerrar notificacion"
+              (click)="dismissNotification(note.id)"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
 
+        <mat-card
+          *ngIf="canSelectEmpresa"
+          class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
+          <div class="bg-[#007A53] px-6 py-4">
+            <mat-card-title class="text-white text-xl font-semibold !m-0">
+              <mat-icon class="mr-2 align-middle">business</mat-icon>
+              Empresa
+            </mat-card-title>
+          </div>
+
+          <mat-card-content class="p-6">
+            <form [formGroup]="empresaForm">
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Seleccionar Empresa</mat-label>
+                <mat-select formControlName="empresaId">
+                  <mat-option
+                    *ngFor="let empresa of empresas"
+                    [value]="empresa.id"
+                  >
+                    {{ empresa.nombre }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </form>
+          </mat-card-content>
+        </mat-card>
 
         <!-- Sección de selección de área -->
         <mat-card
           class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
         >
-          <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
+          <div class="bg-[#007A53] px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">group</mat-icon>
               Área Asignada
@@ -118,37 +141,46 @@ import { EmpresasService } from '../../core/services/empresas.service';
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
-                <p class="text-gray-700 mb-4">Seleccione el área organizacional para la cual desea registrar usuarios:</p>
+                <p class="text-gray-700 mb-4">
+                  Seleccione el área organizacional para la cual desea registrar
+                  usuarios:
+                </p>
                 <form [formGroup]="areaForm">
-                <mat-form-field appearance="outline" class="w-full">
-                  <mat-label class="text-gray-600">Seleccionar Área</mat-label>
-                  <mat-select formControlName="areaId" panelClass="rounded-lg">
-                    <mat-option
-                      *ngFor="let area of areas"
-                      [value]="area.id"
-                      class="hover:bg-blue-50"
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label class="text-gray-600"
+                      >Seleccionar Área</mat-label
                     >
-                      <div class="flex items-center">
-                        <span>{{ area.nombre }}</span>
-                      </div>
-                    </mat-option>
-                  </mat-select>
-                  <mat-hint class="flex items-center text-blue-600 mt-2">
-                    <mat-icon class="text-sm mr-1">info</mat-icon>
-                    El área seleccionada determina los permisos de los usuarios
-                  </mat-hint>
-                </mat-form-field>
+                    <mat-select
+                      formControlName="areaId"
+                      panelClass="rounded-lg"
+                    >
+                      <mat-option
+                        *ngFor="let area of areas"
+                        [value]="area.id"
+                        class="hover:bg-[#F3FAF6]"
+                      >
+                        <div class="flex items-center">
+                          <span>{{ area.nombre }}</span>
+                        </div>
+                      </mat-option>
+                    </mat-select>
+                    <mat-hint class="flex items-center text-[#007A53] mt-2">
+                      <mat-icon class="text-sm mr-1">info</mat-icon>
+                      El área seleccionada determina los permisos de los
+                      usuarios
+                    </mat-hint>
+                  </mat-form-field>
                 </form>
               </div>
 
-              <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
-                <h3 class="font-semibold text-blue-800 mb-3 flex items-center">
+              <div class="bg-white border border-[#E3EFE9] rounded-xl p-5">
+                <h3 class="font-semibold text-[#007A53] mb-3 flex items-center">
                   <mat-icon class="mr-2">lightbulb</mat-icon>
                   Información Importante
                 </h3>
                 <ul class="space-y-2 text-sm text-gray-700">
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm"
+                    <mat-icon class="text-[#007A53] mr-2 text-sm"
                       >check_circle</mat-icon
                     >
                     <span
@@ -157,7 +189,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                     >
                   </li>
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm"
+                    <mat-icon class="text-[#007A53] mr-2 text-sm"
                       >check_circle</mat-icon
                     >
                     <span
@@ -166,7 +198,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                     >
                   </li>
                   <li class="flex items-start">
-                    <mat-icon class="text-green-600 mr-2 text-sm"
+                    <mat-icon class="text-[#007A53] mr-2 text-sm"
                       >check_circle</mat-icon
                     >
                     <span
@@ -184,7 +216,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
         <mat-card
           class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
         >
-          <div class="bg-gradient-to-r from-gray-700 to-gray-900 px-6 py-4">
+          <div class="bg-[#007A53] px-6 py-4">
             <mat-card-title
               class="text-white text-xl font-semibold !m-0 flex items-center justify-between"
             >
@@ -192,7 +224,6 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <mat-icon class="mr-2 align-middle">cloud_upload</mat-icon>
                 Importación Masiva
               </div>
-              
             </mat-card-title>
           </div>
           <mat-card-content class="p-6">
@@ -202,7 +233,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <button
                     mat-raised-button
                     color="primary"
-                    class="!bg-blue-600 hover:!bg-blue-700 !text-white !font-medium !px-6 !py-3 !rounded-lg !shadow-md transition-all duration-200"
+                    class="!bg-[#007A53] hover:!bg-[#006B49] !text-white !font-medium !px-6 !py-3 !rounded-lg !shadow-md transition-all duration-200"
                     (click)="downloadTemplate()"
                   >
                     <mat-icon class="mr-2">download_for_offline</mat-icon>
@@ -218,11 +249,14 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <button
                     mat-stroked-button
                     color="primary"
-                    class="!border-blue-600 !text-blue-600 hover:!bg-blue-50 !font-medium !px-6 !py-3 !rounded-lg transition-all duration-200"
+                    class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6] !font-medium !px-6 !py-3 !rounded-lg transition-all duration-200"
                     (click)="fileInput.click()"
+                    [disabled]="isParsing"
                   >
-                    <mat-icon class="mr-2">upload_file</mat-icon>
-                    Seleccionar Archivo
+                    <mat-icon class="mr-2" [class.animate-spin]="isParsing">{{
+                      isParsing ? 'autorenew' : 'upload_file'
+                    }}</mat-icon>
+                    {{ isParsing ? 'Procesando' : 'Seleccionar Archivo' }}
                   </button>
                   <input
                     #fileInput
@@ -238,11 +272,11 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 </div>
               </div>
 
-              <div class="bg-gray-50 border border-gray-200 rounded-xl p-5">
+              <div class="bg-white border border-gray-200 rounded-xl p-5">
                 <div *ngIf="selectedFileName; else noFile" class="space-y-3">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                      <mat-icon class="text-green-600 mr-3"
+                      <mat-icon class="text-[#007A53] mr-3"
                         >description</mat-icon
                       >
                       <div>
@@ -254,11 +288,20 @@ import { EmpresasService } from '../../core/services/empresas.service';
                         </p>
                       </div>
                     </div>
-                    <mat-icon class="text-green-500">check_circle</mat-icon>
+                    <mat-icon class="text-[#007A53]">check_circle</mat-icon>
                   </div>
                   <div class="flex items-center text-sm text-gray-600">
                     <mat-icon class="text-sm mr-2">schedule</mat-icon>
                     <span>Listo para procesar</span>
+                  </div>
+                  <div
+                    *ngIf="isParsing"
+                    class="flex items-center text-sm text-[#007A53]"
+                  >
+                    <mat-icon class="text-sm mr-2 animate-spin"
+                      >autorenew</mat-icon
+                    >
+                    <span>Validando archivo...</span>
                   </div>
                 </div>
                 <ng-template #noFile>
@@ -277,23 +320,29 @@ import { EmpresasService } from '../../core/services/empresas.service';
           </mat-card-content>
         </mat-card>
         <div class="flex justify-center mb-6">
-  <button
-    mat-raised-button
-    color="accent"
-    class="!bg-green-600 !text-white !px-6 !py-3 !rounded-lg"
-    (click)="showManualForm = !showManualForm"
-  >
-    <mat-icon class="mr-2">
-      {{ showManualForm ? 'expand_less' : 'expand_more' }}
-    </mat-icon>
-    {{ showManualForm ? 'Ocultar Registro Manual' : 'Abrir Registro Manual' }}
-  </button>
-</div>
-
+          <button
+            mat-raised-button
+            color="accent"
+            class="!bg-[#007A53] !text-white !px-6 !py-3 !rounded-lg hover:!bg-[#006B49]"
+            (click)="showManualForm = !showManualForm"
+          >
+            <mat-icon class="mr-2">
+              {{ showManualForm ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+            {{
+              showManualForm
+                ? 'Ocultar Registro Manual'
+                : 'Abrir Registro Manual'
+            }}
+          </button>
+        </div>
 
         <!-- Formulario manual -->
-        <mat-card *ngIf="showManualForm" class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100">
-          <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+        <mat-card
+          *ngIf="showManualForm"
+          class="mb-8 shadow-lg rounded-2xl overflow-hidden border border-gray-100"
+        >
+          <div class="bg-[#007A53] px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">person_add</mat-icon>
               Registro Manual
@@ -301,13 +350,21 @@ import { EmpresasService } from '../../core/services/empresas.service';
           </div>
           <br />
           <mat-card-content class="p-6">
-            <form [formGroup]="manualForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <form
+              [formGroup]="manualForm"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
               <!-- Campo Nombre -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label class="text-gray-600">Nombre</mat-label>
                 <input matInput formControlName="nombre" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">person</mat-icon>
-                <mat-error *ngIf="areaForm.get('nombre')?.invalid && areaForm.get('nombre')?.touched">
+                <mat-error
+                  *ngIf="
+                    manualForm.get('nombre')?.invalid &&
+                    manualForm.get('nombre')?.touched
+                  "
+                >
                   El nombre es requerido
                 </mat-error>
               </mat-form-field>
@@ -317,7 +374,12 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <mat-label class="text-gray-600">Apellido Paterno</mat-label>
                 <input matInput formControlName="apellidoPaterno" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">badge</mat-icon>
-                <mat-error *ngIf="areaForm.get('apellidoPaterno')?.invalid && areaForm.get('apellidoPaterno')?.touched">
+                <mat-error
+                  *ngIf="
+                    manualForm.get('apellidoPaterno')?.invalid &&
+                    manualForm.get('apellidoPaterno')?.touched
+                  "
+                >
                   El apellido paterno es requerido
                 </mat-error>
               </mat-form-field>
@@ -336,7 +398,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <mat-option
                     *ngFor="let func of funciones"
                     [value]="func.id"
-                    class="hover:bg-blue-50"
+                    class="hover:bg-[#F3FAF6]"
                   >
                     <div class="flex items-center">
                       <span>{{ func.nombre }}</span>
@@ -344,7 +406,12 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   </mat-option>
                 </mat-select>
                 <mat-icon matPrefix class="text-gray-400 mr-2">work</mat-icon>
-                <mat-error *ngIf="areaForm.get('funcion')?.invalid && areaForm.get('funcion')?.touched">
+                <mat-error
+                  *ngIf="
+                    manualForm.get('funcion')?.invalid &&
+                    manualForm.get('funcion')?.touched
+                  "
+                >
                   La función es requerida
                 </mat-error>
               </mat-form-field>
@@ -354,7 +421,12 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <mat-label class="text-gray-600">Teléfono</mat-label>
                 <input matInput formControlName="telefono" type="tel" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
-                <mat-error *ngIf="areaForm.get('telefono')?.invalid && areaForm.get('telefono')?.touched">
+                <mat-error
+                  *ngIf="
+                    manualForm.get('telefono')?.invalid &&
+                    manualForm.get('telefono')?.touched
+                  "
+                >
                   El teléfono es requerido
                 </mat-error>
               </mat-form-field>
@@ -364,18 +436,27 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
-                <mat-error *ngIf="areaForm.get('email')?.invalid && areaForm.get('email')?.touched">
-                  {{ areaForm.get('email')?.hasError('required') ? 'El email es requerido' : 'Email inválido' }}
+                <mat-error
+                  *ngIf="
+                    manualForm.get('email')?.invalid &&
+                    manualForm.get('email')?.touched
+                  "
+                >
+                  {{
+                    manualForm.get('email')?.hasError('required')
+                      ? 'El email es requerido'
+                      : 'Email inválido'
+                  }}
                 </mat-error>
               </mat-form-field>
 
               <!-- Botón Agregar -->
               <div class="md:col-span-2 lg:col-span-3 flex justify-center mt-4">
                 <button
-                type="button"
+                  type="button"
                   mat-raised-button
                   color="primary"
-                  class="!bg-gradient-to-r !from-green-600 !to-green-700 hover:!from-green-700 hover:!to-green-800 !text-white !font-medium !px-8 !py-3 !rounded-lg !shadow-lg transition-all duration-200 transform hover:scale-105"
+                  class="!bg-[#007A53] hover:!bg-[#006B49] !text-white !font-medium !px-8 !py-3 !rounded-lg !shadow-lg transition-all duration-200 transform hover:scale-105"
                   (click)="addManualUser()"
                 >
                   <mat-icon class="mr-2">add_circle</mat-icon>
@@ -391,7 +472,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
           *ngIf="previewUsers.length"
           class="shadow-lg rounded-2xl overflow-hidden border border-gray-100"
         >
-          <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4">
+          <div class="bg-[#007A53] px-6 py-4">
             <mat-card-title
               class="text-white text-xl font-semibold !m-0 flex items-center justify-between"
             >
@@ -399,7 +480,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <mat-icon class="mr-2 align-middle">list_alt</mat-icon>
                 Vista Previa de Usuarios
                 <span
-                  class="ml-3 bg-white text-purple-700 text-sm font-medium px-3 py-1 rounded-full"
+                  class="ml-3 bg-white text-[#007A53] text-sm font-medium px-3 py-1 rounded-full"
                 >
                   {{ previewUsers.length }}
                   {{ previewUsers.length === 1 ? 'usuario' : 'usuarios' }}
@@ -408,11 +489,14 @@ import { EmpresasService } from '../../core/services/empresas.service';
               <button
                 mat-raised-button
                 color="accent"
-                class="!bg-white !text-purple-700 hover:!bg-gray-100 !font-medium"
+                class="!bg-white !text-[#007A53] hover:!bg-[#F3FAF6] !font-medium"
                 (click)="submitAll()"
+                [disabled]="isSubmitting"
               >
-                <mat-icon class="mr-2">send</mat-icon>
-                Enviar Solicitudes
+                <mat-icon class="mr-2" [class.animate-spin]="isSubmitting">{{
+                  isSubmitting ? 'autorenew' : 'send'
+                }}</mat-icon>
+                {{ isSubmitting ? 'Enviando...' : 'Enviar Solicitudes' }}
               </button>
             </mat-card-title>
           </div>
@@ -424,7 +508,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <th
                     mat-header-cell
                     *matHeaderCellDef
-                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                    class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC]"
                   >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">person</mat-icon>
@@ -449,7 +533,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <th
                     mat-header-cell
                     *matHeaderCellDef
-                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                    class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC]"
                   >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">email</mat-icon>
@@ -470,7 +554,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <th
                     mat-header-cell
                     *matHeaderCellDef
-                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50"
+                    class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC]"
                   >
                     <div class="flex items-center">
                       <mat-icon class="mr-2 text-sm">phone</mat-icon>
@@ -491,7 +575,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <th
                     mat-header-cell
                     *matHeaderCellDef
-                    class="font-semibold text-gray-700 px-6 py-4 bg-gray-50 text-right"
+                    class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC] text-right"
                   >
                     Acciones
                   </th>
@@ -502,7 +586,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   >
                     <button
                       mat-icon-button
-                      class="!text-red-600 hover:!bg-red-50"
+                      class="!text-[#007A53] hover:!bg-[#F3FAF6]"
                       (click)="removeUser(i)"
                       aria-label="Eliminar usuario"
                       matTooltip="Eliminar usuario"
@@ -515,13 +599,13 @@ import { EmpresasService } from '../../core/services/empresas.service';
                 <tr
                   mat-header-row
                   *matHeaderRowDef="columns"
-                  class="bg-gray-50"
+                  class="bg-white"
                 ></tr>
                 <tr
                   mat-row
                   *matRowDef="let row; columns: columns; let even = even"
-                  [class.bg-gray-50]="even"
-                  class="hover:bg-blue-50 transition-colors duration-150"
+                  [ngClass]="even ? 'bg-[#F9FDFC]' : ''"
+                  class="hover:bg-[#F3FAF6] transition-colors duration-150"
                 ></tr>
               </table>
             </div>
@@ -551,7 +635,7 @@ import { EmpresasService } from '../../core/services/empresas.service';
               <button
                 mat-stroked-button
                 color="accent"
-                class="!border-purple-600 !text-purple-600"
+                class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6]"
               >
                 <mat-icon class="mr-2">description</mat-icon>
                 Ver Documentación
@@ -564,6 +648,66 @@ import { EmpresasService } from '../../core/services/empresas.service';
   `,
   styles: [
     `
+      :host {
+        color: #111827;
+      }
+
+      .notification {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: 0 10px 25px -20px rgba(0, 0, 0, 0.25);
+        animation: note-slide 180ms ease-out;
+      }
+
+      .notification-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f3faf6;
+        color: #007a53;
+      }
+
+      .notification-success,
+      .notification-info,
+      .notification-error {
+        border-color: #cfe6dc;
+      }
+
+      .notification-stack {
+        position: fixed;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 50;
+        width: min(420px, 92vw);
+      }
+
+      @media (max-width: 640px) {
+        .notification-stack {
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+        }
+      }
+
+      @keyframes note-slide {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
       ::ng-deep .mat-form-field-outline {
         background-color: white;
         border-radius: 8px;
@@ -576,7 +720,13 @@ import { EmpresasService } from '../../core/services/empresas.service';
       ::ng-deep
         .mat-form-field-appearance-outline.mat-focused
         .mat-form-field-outline-thick {
-        color: #3b82f6;
+        color: #007a53;
+      }
+
+      ::ng-deep
+        .mat-form-field-appearance-outline
+        .mat-form-field-outline-gap {
+        border-top-color: transparent;
       }
 
       ::ng-deep .mat-select-panel {
@@ -626,30 +776,47 @@ export class UserFormComponent implements OnInit {
   private usersAccessService = inject(UsersAccesService);
   private authService = inject(AuthService);
   private empresasService = inject(EmpresasService);
+  private usersService = inject(UsersService);
 
   selectedFileName: string | null = null;
   showManualForm = false;
   canSelectEmpresa = false;
-
+  currentUserRoleName: string | null = null;
+  isParsing = false;
+  isSubmitting = false;
+  notifications: Array<{
+    id: number;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+    icon: string;
+  }> = [];
+  private notificationId = 0;
 
   async checkEmpresaAccess() {
     const authUser = this.authService.getCurrentUser();
     if (!authUser?.email) return;
 
-    const userData = await this.usersService.getUserWithRoleNameByEmail(authUser.email);
+    const userData = await this.usersService.getUserWithRoleNameByEmail(
+      authUser.email
+    );
 
     console.log('USER DATA RESUELTO:', userData);
 
     this.canSelectEmpresa = userData?.roleName === 'AdminEspecial';
+    this.currentUserRoleName = userData?.roleName || null;
   }
 
-
-
-
-
-
   goToDashboard(): void {
-    this.router.navigate(['/user']);
+    // AdminEspecial debe ir a /user (que es su dashboard)
+    // Otros usuarios van a sus respectivos dashboards
+    if (this.currentUserRoleName === 'AdminEspecial') {
+      this.router.navigate(['/user']);
+    } else if (this.currentUserRoleName === 'AdminArea') {
+      this.router.navigate(['/admin-area']);
+    } else {
+      this.router.navigate(['/user']);
+    }
   }
 
   areas: Area[] = [];
@@ -659,11 +826,14 @@ export class UserFormComponent implements OnInit {
   removeUser(index: number) {
     this.previewUsers.splice(index, 1);
 
-    // Forzamos actualización de la tabla
+    // Forzamos actualizacion de la tabla
     this.previewUsers = [...this.previewUsers];
+    this.pushNotification(
+      'info',
+      'Usuario eliminado',
+      'Se retiro el usuario de la lista.'
+    );
   }
-
-
 
   areaForm = this.fb.group({
     areaId: ['', Validators.required],
@@ -678,16 +848,15 @@ export class UserFormComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
   });
 
-  private usersService = inject(UsersService);
   empresas: Empresa[] = [];
   empresaForm = this.fb.group({
     empresaId: [''],
   });
 
-
   async loadEmpresas() {
     try {
-      this.empresas = await this.empresasService.getEmpresasPorUsuarioLogueado();
+      this.empresas =
+        await this.empresasService.getEmpresasPorUsuarioLogueado();
     } catch (error) {
       console.error('Error cargando empresas:', error);
       this.empresas = [];
@@ -699,6 +868,11 @@ export class UserFormComponent implements OnInit {
 
     if (!authUser?.email) {
       console.warn('Usuario no autenticado');
+      this.pushNotification(
+        'error',
+        'Sesion no valida',
+        'No se pudo identificar al usuario autenticado.'
+      );
       return;
     }
 
@@ -707,6 +881,11 @@ export class UserFormComponent implements OnInit {
     if (!userData?.areaIds || userData.areaIds.length === 0) {
       console.warn('Usuario sin áreas asignadas');
       this.areas = [];
+      this.pushNotification(
+        'info',
+        'Sin areas asignadas',
+        'Contacte al administrador para habilitar su area.'
+      );
       return;
     }
 
@@ -737,14 +916,17 @@ export class UserFormComponent implements OnInit {
     await this.loadFunciones();
     await this.checkEmpresaAccess();
     await this.loadEmpresas();
+    this.pushNotification(
+      'info',
+      'Listo para registrar',
+      'Seleccione la empresa y el area antes de agregar usuarios.'
+    );
   }
-
-
 
   async loadFunciones() {
     try {
       this.funciones = await this.funcionesService.getFunciones();
-      console.log('✅ Funciones cargadas:', this.funciones);
+      console.log('Funciones cargadas:', this.funciones);
     } catch (error) {
       console.error('Error cargando funciones:', error);
       this.funciones = [];
@@ -774,21 +956,41 @@ export class UserFormComponent implements OnInit {
     if (!file) return;
 
     this.selectedFileName = file.name;
+    this.isParsing = true;
 
     const reader = new FileReader();
     reader.onload = () => this.parseCSV(reader.result as string);
+    reader.onerror = () => {
+      this.isParsing = false;
+      this.pushNotification(
+        'error',
+        'Error al leer',
+        'No se pudo leer el archivo seleccionado.'
+      );
+    };
     reader.readAsText(file);
   }
 
   parseCSV(csv: string) {
     const errors: string[] = [];
+    const parsedUsers: any[] = [];
 
     const lines = csv
       .split('\n')
-      .map(l => l.trim())
-      .filter(l => l && !l.startsWith('#'));
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    if (!lines.length) {
+      this.isParsing = false;
+      this.pushNotification(
+        'error',
+        'Archivo vacio',
+        'El archivo CSV no contiene registros.'
+      );
+      return;
+    }
+
+    const headers = lines[0].split(',').map((h) => h.trim());
 
     lines.slice(1).forEach((line, index) => {
       const values = line.split(',');
@@ -806,13 +1008,11 @@ export class UserFormComponent implements OnInit {
 
         if (h === 'funcion') {
           const funcionEncontrada = this.funciones.find(
-            f => f.nombre.toLowerCase() === value.toLowerCase()
+            (f) => f.nombre.toLowerCase() === value.toLowerCase()
           );
 
           if (!funcionEncontrada) {
-            errors.push(
-              `Línea ${index + 2}: la función "${value}" no existe`
-            );
+            errors.push(`Linea ${index + 2}: la funcion "${value}" no existe`);
           } else {
             user.funcion = funcionEncontrada.id;
           }
@@ -822,27 +1022,36 @@ export class UserFormComponent implements OnInit {
         user[h] = value;
       });
 
-      this.previewUsers.push(user);
+      parsedUsers.push(user);
     });
 
     if (errors.length) {
-      alert(
-        'Errores encontrados en el archivo:\n\n' +
-        errors.join('\n')
+      this.pushNotification(
+        'error',
+        'Archivo con errores',
+        `${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} mas)` : ''}`
       );
-      this.previewUsers = [];
+      this.isParsing = false;
       return;
     }
 
-    this.previewUsers = [...this.previewUsers];
+    this.previewUsers = [...this.previewUsers, ...parsedUsers];
+    this.isParsing = false;
+    this.pushNotification(
+      'success',
+      'Archivo cargado',
+      `Se agregaron ${parsedUsers.length} usuarios a la lista.`
+    );
   }
-
-
-
 
   addManualUser() {
     if (this.manualForm.invalid) {
       this.manualForm.markAllAsTouched();
+      this.pushNotification(
+        'error',
+        'Campos incompletos',
+        'Verifique los datos requeridos antes de continuar.'
+      );
       return;
     }
 
@@ -852,22 +1061,34 @@ export class UserFormComponent implements OnInit {
     this.previewUsers = [...this.previewUsers];
 
     this.manualForm.reset();
+    this.pushNotification(
+      'success',
+      'Usuario agregado',
+      'El usuario se agrego correctamente a la lista.'
+    );
   }
-
-
 
   async submitAll() {
     if (this.areaForm.invalid) {
-      alert('Seleccione un área');
+      this.pushNotification(
+        'error',
+        'Area requerida',
+        'Seleccione un area para continuar.'
+      );
       return;
     }
 
     const authUser = this.authService.getCurrentUser();
     if (!authUser?.email) {
-      alert('Sesión no válida');
+      this.pushNotification(
+        'error',
+        'Sesion no valida',
+        'Inicie sesion nuevamente para continuar.'
+      );
       return;
     }
 
+    this.isSubmitting = true;
     const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
     let empresaIdFinal: string | undefined;
@@ -875,7 +1096,12 @@ export class UserFormComponent implements OnInit {
     if (this.canSelectEmpresa) {
       empresaIdFinal = this.empresaForm.value.empresaId ?? undefined;
       if (!empresaIdFinal) {
-        alert('Seleccione una empresa');
+        this.pushNotification(
+          'error',
+          'Empresa requerida',
+          'Seleccione una empresa para enviar las solicitudes.'
+        );
+        this.isSubmitting = false;
         return;
       }
     } else {
@@ -883,38 +1109,75 @@ export class UserFormComponent implements OnInit {
     }
 
     if (!empresaIdFinal) {
-      alert('No se pudo determinar la empresa');
+      this.pushNotification(
+        'error',
+        'Empresa no disponible',
+        'No se pudo determinar la empresa asignada.'
+      );
+      this.isSubmitting = false;
       return;
     }
-    const estatusInicial: 'pendiente' | 'aprobado' =
-      this.canSelectEmpresa ? 'aprobado' : 'pendiente';
 
+    try {
+      for (const u of this.previewUsers) {
+        const userData: any = {
+          ...u,
+          areaId: this.areaForm.value.areaId,
+          empresaId: empresaIdFinal,
+          estatus: this.canSelectEmpresa ? 'aprobado' : 'pendiente',
+        };
 
-    for (const u of this.previewUsers) {
+        // Solo si es AdminEspecial
+        if (this.canSelectEmpresa) {
+          userData.reviewedBy = authUser.email;
+          userData.reviewedAt = new Date();
+        }
 
-      const userData: any = {
-        ...u,
-        areaId: this.areaForm.value.areaId,
-        empresaId: empresaIdFinal,
-        estatus: this.canSelectEmpresa ? 'aprobado' : 'pendiente',
-      };
-
-      // 👉 SOLO si es AdminEspecial
-      if (this.canSelectEmpresa) {
-        userData.reviewedBy = authUser.email;
-        userData.reviewedAt = new Date();
+        await this.usersAccessService.createUser(userData, authUser.email);
       }
 
-      await this.usersAccessService.createUser(
-        userData,
-        authUser.email
+      this.previewUsers = [];
+      this.pushNotification(
+        'success',
+        'Solicitudes enviadas',
+        'Las solicitudes fueron enviadas correctamente.'
       );
+    } catch (error) {
+      console.error('Error al enviar solicitudes:', error);
+      this.pushNotification(
+        'error',
+        'Error al enviar',
+        'Ocurrio un problema al enviar las solicitudes.'
+      );
+    } finally {
+      this.isSubmitting = false;
     }
-
-
-
-    this.previewUsers = [];
-    alert('Solicitudes enviadas correctamente');
   }
 
+  private pushNotification(
+    type: 'success' | 'error' | 'info',
+    title: string,
+    message: string
+  ) {
+    const iconMap = {
+      success: 'check_circle',
+      error: 'error_outline',
+      info: 'info',
+    } as const;
+
+    const note = {
+      id: ++this.notificationId,
+      type,
+      title,
+      message,
+      icon: iconMap[type],
+    };
+
+    this.notifications = [note, ...this.notifications].slice(0, 3);
+    setTimeout(() => this.dismissNotification(note.id), 6000);
+  }
+
+  dismissNotification(id: number) {
+    this.notifications = this.notifications.filter((note) => note.id !== id);
+  }
 }

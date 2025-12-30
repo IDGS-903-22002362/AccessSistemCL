@@ -6,6 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { AuthService } from '../../core/services/auth.service';
 import { UsersService } from '../../core/services/users.service';
 import {
@@ -17,11 +20,8 @@ import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserJornadaComponent } from '../user/user-jornada.component';
-
-
-
-
 
 @Component({
   selector: 'app-user-dashboard',
@@ -33,23 +33,21 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
     MatIconModule,
     MatCardModule,
     MatTableModule,
-    FormsModule,          // ✅ NECESARIO PARA ngModel
+    MatPaginatorModule,
+    MatInputModule,
+    MatFormFieldModule,
+    FormsModule, // ✅ NECESARIO PARA ngModel
     MatCheckboxModule,
-    UserJornadaComponent,    // (opcional, ya lo importaste)
+    MatTooltipModule,
+    UserJornadaComponent, // (opcional, ya lo importaste)
   ],
 
   template: `
     <div class="min-h-screen bg-gray-50">
       <mat-toolbar style="background-color:#007A53" class="shadow-md">
         <div class="flex items-center gap-3 text-white">
-          <img
-            src="images/leon.png"
-            alt="Club León"
-            class="h-8 w-auto"
-          />
-          <span class="font-medium">
-            Bienvenido, {{ currentUserName }}
-          </span>
+          <img src="images/leon.png" alt="Club León" class="h-8 w-auto" />
+          <span class="font-medium"> Bienvenido, {{ currentUserName }} </span>
         </div>
 
         <span class="flex-1"></span>
@@ -58,8 +56,6 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
           <mat-icon>logout</mat-icon>
         </button>
       </mat-toolbar>
-
-
 
       <div class="container mx-auto p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -99,22 +95,13 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
             </mat-card-content>
           </mat-card>
         </div>
-<!--Componente de jornadas -->
-        <app-user-jornada></app-user-jornada>
 
-
-
-<div class="mt-8 flex justify-center">
-  <button
-    mat-raised-button
-    style="background-color:#007A53; color: white; padding: 0.75rem 2rem;"
-    (click)="goToRegistro()"
-  >
-    Registrar usuarios
-  </button>
-</div>
-
-
+        <!-- Componente de jornadas con ancho limitado -->
+        <div class="flex justify-center mb-8">
+          <div class="w-full max-w-4xl">
+            <app-user-jornada></app-user-jornada>
+          </div>
+        </div>
 
         <mat-card>
           <mat-card-header>
@@ -122,61 +109,76 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
           </mat-card-header>
           <mat-card-content>
             <div class="overflow-x-auto">
-              <div class="flex justify-end mb-4">
-  <button
-    mat-raised-button
-    (click)="showFilters = !showFilters"
-    style="background-color:#007A53; color:white"
-  >
-    <mat-icon>filter_list</mat-icon>
-    <span class="ml-2">Filtros</span>
-  </button>
-</div>
+              <div class="flex gap-2 mb-4 flex-wrap items-center">
+                <!-- Buscador -->
+                <div class="flex-1 min-w-[250px] relative">
+                  <div class="relative">
+                    <mat-icon
+                      class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      >search</mat-icon
+                    >
+                    <input
+                      [(ngModel)]="searchText"
+                      (ngModelChange)="applySearch()"
+                      placeholder="Buscar por nombre o email"
+                      class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] focus:border-transparent"
+                    />
+                  </div>
+                </div>
 
-<div
-  *ngIf="showFilters"
-  class="bg-[#007A53] bg-opacity-5 border border-[#007A53]
+                <button
+                  mat-raised-button
+                  (click)="showFilters = !showFilters"
+                  style="background-color:#007A53; color:white; height: 48px;"
+                >
+                  <mat-icon>filter_list</mat-icon>
+                  <span class="ml-2">Filtros</span>
+                </button>
+              </div>
+
+              <div
+                *ngIf="showFilters"
+                class="bg-[#007A53] bg-opacity-5 border border-[#007A53]
          p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-2 gap-4"
->
-  <!-- Estado -->
-  <div>
-    <label class="block text-sm font-medium text-[#007A53] mb-1">
-      Estado
-    </label>
-    <select
-      [(ngModel)]="filters.estado"
-      (change)="applyFilters()"
-      class="w-full p-2 border-2 border-[#007A53] rounded
+              >
+                <!-- Estado -->
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-1">
+                    Estado
+                  </label>
+                  <select
+                    [(ngModel)]="filters.estado"
+                    (change)="applyFilters()"
+                    class="w-full p-2 border-2 border-[#007A53] rounded
              focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-    >
-      <option value="">Todos</option>
-      <option value="pendiente">Pendiente</option>
-      <option value="aprobado">Aprobado</option>
-      <option value="rechazado">Rechazado</option>
-    </select>
-  </div>
+                  >
+                    <option value="">Todos</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="aprobado">Aprobado</option>
+                    <option value="rechazado">Rechazado</option>
+                  </select>
+                </div>
 
-  <!-- Función -->
-  <div>
-    <label class="block text-sm font-medium text-[#007A53] mb-1">
-      Función
-    </label>
-    <select
-      [(ngModel)]="filters.funcion"
-      (change)="applyFilters()"
-      class="w-full p-2 border-2 border-[#007A53] rounded
+                <!-- Función -->
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-1">
+                    Función
+                  </label>
+                  <select
+                    [(ngModel)]="filters.funcion"
+                    (change)="applyFilters()"
+                    class="w-full p-2 border-2 border-[#007A53] rounded
              focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-    >
-      <option value="">Todas</option>
-      <option *ngFor="let func of uniqueFunciones" [value]="func">
-        {{ funcionesMap.get(func) || func }}
-      </option>
-    </select>
-  </div>
-</div>
+                  >
+                    <option value="">Todas</option>
+                    <option *ngFor="let func of uniqueFunciones" [value]="func">
+                      {{ funcionesMap.get(func) || func }}
+                    </option>
+                  </select>
+                </div>
+              </div>
 
-              <table mat-table [dataSource]="filteredUsers" class="w-full">
-
+              <table mat-table [dataSource]="paginatedUsers" class="w-full">
                 <!-- Nombre -->
                 <ng-container matColumnDef="nombre">
                   <th mat-header-cell *matHeaderCellDef>Nombre</th>
@@ -199,7 +201,6 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   </td>
                 </ng-container>
 
-
                 <!-- Estatus -->
                 <ng-container matColumnDef="estatus">
                   <th mat-header-cell *matHeaderCellDef>Estatus</th>
@@ -216,6 +217,25 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   <td mat-cell *matCellDef="let user">{{ user.fecha }}</td>
                 </ng-container>
 
+                <!-- PDF -->
+                <ng-container matColumnDef="pdf">
+                  <th mat-header-cell *matHeaderCellDef>PDF</th>
+                  <td mat-cell *matCellDef="let user">
+                    @if (user.estatus === 'aprobado' && user.pdfUrl) {
+                    <button
+                      mat-icon-button
+                      color="primary"
+                      (click)="downloadPDF(user.pdfUrl, user.nombre)"
+                      matTooltip="Descargar acreditación"
+                    >
+                      <mat-icon>download</mat-icon>
+                    </button>
+                    } @else {
+                    <span class="text-gray-400">-</span>
+                    }
+                  </td>
+                </ng-container>
+
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                 <tr
                   mat-row
@@ -223,9 +243,40 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                 ></tr>
               </table>
 
-              @if (filteredUsers.length === 0) {
+              @if (paginatedUsers.length === 0) {
               <div class="text-center py-8 text-gray-500">
                 No hay solicitudes registradas
+              </div>
+              }
+
+              <!-- Paginador -->
+              @if (filteredUsers.length > 0) {
+              <div
+                class="flex justify-between items-center mt-4 text-sm text-gray-600"
+              >
+                <div>
+                  Mostrando {{ startIndex + 1 }} - {{ endIndex }} de
+                  {{ filteredUsers.length }} registros
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    mat-icon-button
+                    [disabled]="currentPage === 1"
+                    (click)="previousPage()"
+                  >
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <span class="flex items-center px-2">
+                    Página {{ currentPage }} de {{ totalPages }}
+                  </span>
+                  <button
+                    mat-icon-button
+                    [disabled]="currentPage === totalPages"
+                    (click)="nextPage()"
+                  >
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </div>
               </div>
               }
             </div>
@@ -252,16 +303,24 @@ export class UserDashboardComponent {
   // ===== Filtros =====
   showFilters = false;
 
+  searchText = '';
   filters = {
     estado: '',
     funcion: '',
   };
 
-  allUsers: any[] = [];      // respaldo sin filtrar
-  filteredUsers: any[] = []; // lo que se muestra
+  allUsers: any[] = []; // respaldo sin filtrar
+  filteredUsers: any[] = []; // lo que se muestra después de filtros
+  paginatedUsers: any[] = []; // lo que se muestra en la página actual
+
+  // Paginación
+  currentPage = 1;
+  pageSize = 10;
+  totalPages = 1;
+  startIndex = 0;
+  endIndex = 0;
 
   uniqueFunciones: string[] = [];
-
 
   async loadFunciones(): Promise<void> {
     const funciones = await this.funcionesService.getFunciones();
@@ -273,14 +332,13 @@ export class UserDashboardComponent {
     });
   }
 
-
-
   displayedColumns: string[] = [
     'nombre',
     'email',
     'funcion',
     'estatus',
-    'fecha'
+    'fecha',
+    'pdf',
   ];
 
   dataSource: any[] = []; // Placeholder vacío
@@ -289,10 +347,6 @@ export class UserDashboardComponent {
   totalUsuarios = 0;
   usuariosAprobados = 0;
   usuariosRechazados = 0;
-
-
-
-
 
   async loadUsers(): Promise<void> {
     try {
@@ -313,42 +367,86 @@ export class UserDashboardComponent {
 
       this.allUsers = mapped;
       this.filteredUsers = mapped;
+      this.updatePagination();
 
       // opciones únicas
-      this.uniqueFunciones = [
-        ...new Set(mapped.map(u => u.funcion))
-      ];
+      this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
 
       this.totalUsuarios = users.length;
-      this.usuariosAprobados = users.filter(u => u.estatus === 'aprobado').length;
-      this.usuariosRechazados = users.filter(u => u.estatus === 'rechazado').length;
-
+      this.usuariosAprobados = users.filter(
+        (u) => u.estatus === 'aprobado'
+      ).length;
+      this.usuariosRechazados = users.filter(
+        (u) => u.estatus === 'rechazado'
+      ).length;
     } catch (error) {
       console.error('Error cargando usuarios', error);
     }
   }
 
+  applySearch(): void {
+    this.currentPage = 1;
+    this.applyFilters();
+  }
+
   applyFilters(): void {
     let filtered = [...this.allUsers];
 
+    // Filtro de búsqueda por nombre o email
+    if (this.searchText.trim()) {
+      const search = this.searchText.toLowerCase();
+      filtered = filtered.filter((u) => {
+        const nombreCompleto = `${u.nombre} ${u.apellidoPaterno}`.toLowerCase();
+        const email = u.email?.toLowerCase() || '';
+        return nombreCompleto.includes(search) || email.includes(search);
+      });
+    }
+
     if (this.filters.estado) {
-      filtered = filtered.filter(
-        u => u.estatus === this.filters.estado
-      );
+      filtered = filtered.filter((u) => u.estatus === this.filters.estado);
     }
 
     if (this.filters.funcion) {
-      filtered = filtered.filter(
-        u => u.funcion === this.filters.funcion
-      );
+      filtered = filtered.filter((u) => u.funcion === this.filters.funcion);
     }
 
     this.filteredUsers = filtered;
+    this.updatePagination();
   }
 
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.filteredUsers.length / this.pageSize);
+    if (this.totalPages === 0) this.totalPages = 1;
+    if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
+
+    this.startIndex = (this.currentPage - 1) * this.pageSize;
+    this.endIndex = Math.min(
+      this.startIndex + this.pageSize,
+      this.filteredUsers.length
+    );
+
+    this.paginatedUsers = this.filteredUsers.slice(
+      this.startIndex,
+      this.endIndex
+    );
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.updatePagination();
+    }
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.updatePagination();
+    }
+  }
 
   ngOnInit() {
-    this.authService.user$.pipe(take(1)).subscribe(user => {
+    this.authService.user$.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.currentUserName =
           user.displayName ||
@@ -361,12 +459,9 @@ export class UserDashboardComponent {
     this.loadUsers();
   }
 
-
-
   goToRegistro() {
     this.router.navigate(['/user/registro']);
   }
-
 
   async logout(): Promise<void> {
     try {
@@ -377,7 +472,6 @@ export class UserDashboardComponent {
     }
   }
 
-
   getEstadoClass(estado: string): string {
     const classes: any = {
       pendiente: 'px-2 py-1 rounded bg-yellow-100 text-yellow-800',
@@ -385,5 +479,21 @@ export class UserDashboardComponent {
       rechazado: 'px-2 py-1 rounded bg-red-100 text-red-800',
     };
     return classes[estado] || 'px-2 py-1 rounded bg-gray-100 text-gray-800';
+  }
+
+  downloadPDF(pdfUrl: string, userName: string): void {
+    if (!pdfUrl) {
+      console.error('No hay URL de PDF disponible');
+      return;
+    }
+
+    // Crear un elemento anchor temporal para descargar
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.target = '_blank';
+    link.download = `acreditacion_${userName.replace(/\s+/g, '_')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }
