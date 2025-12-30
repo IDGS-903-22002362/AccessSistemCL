@@ -21,6 +21,7 @@ import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { EscudosService } from '../../core/services/escudos.service';
 
 @Component({
   selector: 'app-user-jornada',
@@ -71,24 +72,60 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 
         <!-- Content compacto -->
         <mat-card-content class="p-4">
-          <div class="grid grid-cols-3 items-center gap-4">
-            <!-- Local -->
-            <div class="text-center">
+          <div class="flex items-center justify-center gap-6">
+            <!-- Escudo Local -->
+            <div class="text-center flex flex-col items-center">
+              <div class="mb-2">
+                <img
+                  *ngIf="escudoLocal"
+                  [src]="escudoLocal"
+                  alt="Escudo {{ jornadaActiva.equipo_local }}"
+                  class="h-20 w-20 object-contain"
+                />
+                <div
+                  *ngIf="!escudoLocal"
+                  class="h-20 w-20 flex items-center justify-center"
+                >
+                  <mat-icon
+                    class="text-gray-300"
+                    style="font-size: 48px; width: 48px; height: 48px;"
+                    >shield</mat-icon
+                  >
+                </div>
+              </div>
               <p class="text-gray-500 text-xs mb-1">Local</p>
-              <p class="text-base font-bold text-gray-800">
+              <p class="text-sm font-bold text-gray-800">
                 {{ jornadaActiva.equipo_local }}
               </p>
             </div>
 
             <!-- VS -->
-            <div class="text-center">
+            <div class="text-center px-4">
               <p class="text-3xl font-bold text-gray-400">VS</p>
             </div>
 
-            <!-- Visitante -->
-            <div class="text-center">
+            <!-- Escudo Visitante -->
+            <div class="text-center flex flex-col items-center">
+              <div class="mb-2">
+                <img
+                  *ngIf="escudoVisitante"
+                  [src]="escudoVisitante"
+                  alt="Escudo {{ jornadaActiva.equipo_visitante }}"
+                  class="h-20 w-20 object-contain"
+                />
+                <div
+                  *ngIf="!escudoVisitante"
+                  class="h-20 w-20 flex items-center justify-center"
+                >
+                  <mat-icon
+                    class="text-gray-300"
+                    style="font-size: 48px; width: 48px; height: 48px;"
+                    >shield</mat-icon
+                  >
+                </div>
+              </div>
               <p class="text-gray-500 text-xs mb-1">Visitante</p>
-              <p class="text-base font-bold text-gray-800">
+              <p class="text-sm font-bold text-gray-800">
                 {{ jornadaActiva.equipo_visitante }}
               </p>
             </div>
@@ -142,9 +179,14 @@ export class UserJornadaComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
+  private escudosService = inject(EscudosService);
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   funcionesMap = new Map<string, string>();
+
+  // URLs de los escudos
+  escudoLocal: string | null = null;
+  escudoVisitante: string | null = null;
   // ===== Filtros =====
   showFilters = false;
 
@@ -185,9 +227,26 @@ export class UserJornadaComponent {
       .getJornadasActivas$()
       .pipe(take(1))
       .subscribe({
-        next: (jornadas) => {
+        next: async (jornadas) => {
           console.log('Jornadas activas:', jornadas);
           this.jornadaActiva = jornadas.length > 0 ? jornadas[0] : undefined;
+
+          // Cargar escudos si hay jornada activa
+          if (this.jornadaActiva) {
+            console.log('Cargando escudos para:', {
+              local: this.jornadaActiva.equipo_local,
+              visitante: this.jornadaActiva.equipo_visitante,
+            });
+
+            const escudos = await this.escudosService.getEscudosPartido(
+              this.jornadaActiva.equipo_local,
+              this.jornadaActiva.equipo_visitante
+            );
+
+            console.log('Escudos obtenidos:', escudos);
+            this.escudoLocal = escudos.local;
+            this.escudoVisitante = escudos.visitante;
+          }
         },
         error: (err) => console.error(err),
       });

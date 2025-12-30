@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Permitir lectura pública de los escudos (raíz del bucket)
+    match /{escudo} {
+      allow read: if true;
+    }
+    
+    // Permitir lectura pública de PDFs de acreditación
+    match /acreditaciones/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Solo las Cloud Functions pueden escribir
+    }
+  }
+}

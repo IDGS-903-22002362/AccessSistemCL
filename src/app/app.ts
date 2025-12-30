@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-root',
   imports: [CommonModule, RouterOutlet],
   templateUrl: './app.html',
+  styleUrl: './app.css',
 })
 export class App {
   protected title = 'accesos';
