@@ -18,6 +18,7 @@ import {
 import { take } from 'rxjs/operators';
 import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
+import { EmpresasService } from '../../core/services/empresas.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -193,6 +194,14 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   <td mat-cell *matCellDef="let user">{{ user.email }}</td>
                 </ng-container>
 
+                <!-- Empresa -->
+                <ng-container matColumnDef="empresa">
+                  <th mat-header-cell *matHeaderCellDef>Empresa</th>
+                  <td mat-cell *matCellDef="let user">
+                    {{ user.empresaNombre }}
+                  </td>
+                </ng-container>
+
                 <!-- Función -->
                 <ng-container matColumnDef="funcion">
                   <th mat-header-cell *matHeaderCellDef>Función</th>
@@ -299,7 +308,9 @@ export class UserDashboardComponent {
   private usersAccessService = inject(UsersAccesService);
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
+  private empresasService = inject(EmpresasService);
   funcionesMap = new Map<string, string>();
+  empresasMap = new Map<string, string>();
   // ===== Filtros =====
   showFilters = false;
 
@@ -332,9 +343,20 @@ export class UserDashboardComponent {
     });
   }
 
+  async loadEmpresas(): Promise<void> {
+    const empresas = await this.empresasService.getEmpresas();
+
+    empresas.forEach((empresa) => {
+      if (empresa.id) {
+        this.empresasMap.set(empresa.id, empresa.nombre);
+      }
+    });
+  }
+
   displayedColumns: string[] = [
     'nombre',
     'email',
+    'empresa',
     'funcion',
     'estatus',
     'fecha',
@@ -360,6 +382,7 @@ export class UserDashboardComponent {
       const mapped = users.map((user) => ({
         ...user,
         funcionNombre: this.funcionesMap.get(user.funcion) || '—',
+        empresaNombre: this.empresasMap.get(user.empresaId) || '—',
         fecha: user.createdAt?.toDate
           ? user.createdAt.toDate().toLocaleDateString()
           : '—',
@@ -456,6 +479,7 @@ export class UserDashboardComponent {
     });
 
     this.loadFunciones();
+    this.loadEmpresas();
     this.loadUsers();
   }
 

@@ -374,23 +374,8 @@ async function getRelatedData(userData: any) {
 /**
  * Generar QR code como base64
  */
-async function generateQRCode(data: any): Promise<string> {
-  const codigoPulsera =
-    !data.codigoPulsera || data.codigoPulsera === 'SIN_PULSERA_ASIGNADA'
-      ? 'SIN PULSERA ASIGNADA'
-      : data.codigoPulsera;
-
-  const qrData = {
-    codigoPulsera: codigoPulsera,
-    nombre: data.nombre,
-    apellidoPaterno: data.apellidoPaterno,
-    area: data.areaNombre,
-    funcion: data.funcionNombre,
-    empresa: data.empresaNombre,
-    email: data.email,
-  };
-
-  return await QRCode.toDataURL(JSON.stringify(qrData), {
+async function generateQRCode(userId: string): Promise<string> {
+  return await QRCode.toDataURL(userId, {
     errorCorrectionLevel: 'H',
     type: 'image/png',
     width: 200,
@@ -401,7 +386,11 @@ async function generateQRCode(data: any): Promise<string> {
 /**
  * Generar PDF de constancia de acreditación
  */
-async function generatePDF(userData: any, relatedData: any): Promise<Buffer> {
+async function generatePDF(
+  userData: any,
+  relatedData: any,
+  userId: string
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -417,10 +406,7 @@ async function generatePDF(userData: any, relatedData: any): Promise<Buffer> {
       const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
       // Generar QR (debe ser async)
-      generateQRCode({
-        ...userData,
-        ...relatedData,
-      })
+      generateQRCode(userId)
         .then(async (qrDataUrl) => {
           const qrBase64 = qrDataUrl.split(',')[1];
           const qrBuffer = Buffer.from(qrBase64, 'base64');
@@ -882,7 +868,7 @@ async function sendEmailNotification(
 
     // Generar PDF
     console.log('Generando PDF...');
-    const pdfBuffer = await generatePDF(userData, relatedData);
+    const pdfBuffer = await generatePDF(userData, relatedData, userId);
 
     // Subir PDF a Storage
     console.log('Subiendo PDF a Storage...');
