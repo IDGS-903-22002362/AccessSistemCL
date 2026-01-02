@@ -937,22 +937,16 @@ export class UserFormComponent implements OnInit {
   }
 
   downloadTemplate() {
-    // Generar CSV con funciones disponibles como referencia
-    let csv = 'nombre,apellidoPaterno,apellidoMaterno,funcion,telefono,email\n';
-    csv += '# Funciones disponibles (use el nombre exacto):\n';
-    this.funciones.forEach((func) => {
-      csv += `# - ${func.nombre}\n`;
-    });
-    csv += '\n';
+    const url = 'files/Archivo_definitivo.xlsx';
+    const filename = 'Archivo_definitivo.xlsx';
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'plantilla_usuarios.csv';
+    a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
   }
+
+
   private processParsedUsers(rows: any[]) {
     const errors: string[] = [];
     const parsedUsers: any[] = [];
