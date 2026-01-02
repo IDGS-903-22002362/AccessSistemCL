@@ -25,6 +25,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { UsersService } from '../../core/services/users.service';
 import { Empresa } from '../../core/services/empresas.service';
 import { EmpresasService } from '../../core/services/empresas.service';
+import * as XLSX from 'xlsx';
+
 
 @Component({
   selector: 'app-user-form',
@@ -261,10 +263,11 @@ import { EmpresasService } from '../../core/services/empresas.service';
                   <input
                     #fileInput
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.xlsx"
                     hidden
                     (change)="onFileSelected($event)"
                   />
+
                   <div class="text-sm text-gray-600 flex-1">
                     <p class="font-medium">Subir CSV</p>
                     <p class="text-xs">Máx. 5MB, formato .csv</p>
@@ -950,26 +953,128 @@ export class UserFormComponent implements OnInit {
     a.click();
     URL.revokeObjectURL(url);
   }
+  private processParsedUsers(rows: any[]) {
+    const errors: string[] = [];
+    const parsedUsers: any[] = [];
+
+    rows.forEach((row, index) => {
+      const user: any = {};
+
+      Object.keys(row).forEach((key) => {
+        let value = String(row[key] ?? '').trim();
+
+        if (key === 'email') {
+          value = value
+            .replace(/^=HYPERLINK\("mailto:/i, '')
+            .replace(/".*$/, '')
+            .replace(/"/g, '');
+        }
+
+        if (key === 'funcion') {
+          const funcionEncontrada = this.funciones.find(
+            (f) => f.nombre.toLowerCase() === value.toLowerCase()
+          );
+
+          if (!funcionEncontrada) {
+            errors.push(
+              `Linea ${index + 2}: la funcion "${value}" no existe`
+            );
+          } else {
+            user.funcion = funcionEncontrada.id;
+          }
+          return;
+        }
+
+        user[key] = value;
+      });
+
+      parsedUsers.push(user);
+    });
+
+    if (errors.length) {
+      this.isParsing = false;
+      this.pushNotification(
+        'error',
+        'Archivo con errores',
+        `${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} más)` : ''}`
+      );
+      return;
+    }
+
+    this.previewUsers = [...this.previewUsers, ...parsedUsers];
+    this.isParsing = false;
+    this.pushNotification(
+      'success',
+      'Archivo cargado',
+      `Se agregaron ${parsedUsers.length} usuarios a la lista.`
+    );
+  }
+
+  private fileReadError() {
+    this.isParsing = false;
+    this.pushNotification(
+      'error',
+      'Error al leer',
+      'No se pudo leer el archivo seleccionado.'
+    );
+  }
+  parseXLSX(buffer: ArrayBuffer) {
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Convierte la hoja a JSON usando encabezados
+    const rows = XLSX.utils.sheet_to_json<any>(worksheet, {
+      defval: '',
+      raw: false,
+    });
+
+    if (!rows.length) {
+      this.isParsing = false;
+      this.pushNotification(
+        'error',
+        'Archivo vacío',
+        'El archivo XLSX no contiene registros.'
+      );
+      return;
+    }
+
+    this.processParsedUsers(rows);
+  }
+
+
 
   onFileSelected(event: any) {
-    const file = event.target.files[0];
+    const file: File = event.target.files[0];
     if (!file) return;
 
     this.selectedFileName = file.name;
     this.isParsing = true;
 
-    const reader = new FileReader();
-    reader.onload = () => this.parseCSV(reader.result as string);
-    reader.onerror = () => {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+
+    if (extension === 'csv') {
+      const reader = new FileReader();
+      reader.onload = () => this.parseCSV(reader.result as string);
+      reader.onerror = () => this.fileReadError();
+      reader.readAsText(file);
+    }
+    else if (extension === 'xlsx') {
+      const reader = new FileReader();
+      reader.onload = (e: any) => this.parseXLSX(e.target.result);
+      reader.onerror = () => this.fileReadError();
+      reader.readAsArrayBuffer(file);
+    }
+    else {
       this.isParsing = false;
       this.pushNotification(
         'error',
-        'Error al leer',
-        'No se pudo leer el archivo seleccionado.'
+        'Formato no soportado',
+        'Solo se permiten archivos CSV o XLSX.'
       );
-    };
-    reader.readAsText(file);
+    }
   }
+
 
   parseCSV(csv: string) {
     const errors: string[] = [];
@@ -1037,6 +1142,7 @@ export class UserFormComponent implements OnInit {
 
     this.previewUsers = [...this.previewUsers, ...parsedUsers];
     this.isParsing = false;
+    this.processParsedUsers(parsedUsers);
     this.pushNotification(
       'success',
       'Archivo cargado',
