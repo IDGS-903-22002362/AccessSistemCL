@@ -32,7 +32,7 @@ export class EscudosService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Elimina acentos
-      .replace(/[^a-z ]/g, '')
+      .replace(/[^a-z]/g, '') // Elimina todo excepto letras (sin espacios)
       .trim();
   }
 
