@@ -863,7 +863,7 @@ export class UserFormComponent implements OnInit {
     this.canSelectEmpresa = userData?.roleName === 'AdminEspecial';
     this.currentUserRoleName = userData?.roleName || null;
 
-    // 🔥 NUEVO
+
     this.isHamcoUser = userData?.apodo === 'hamco';
     this.setTableColumns();
   }
