@@ -112,10 +112,11 @@ import * as XLSX from 'xlsx';
               Empresa
             </mat-card-title>
           </div>
+          <br>
 
           <mat-card-content class="p-6">
             <form [formGroup]="empresaForm">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label>Seleccionar Empresa</mat-label>
                 <mat-select formControlName="empresaId">
                   <mat-option
@@ -140,6 +141,7 @@ import * as XLSX from 'xlsx';
               Área Asignada
             </mat-card-title>
           </div>
+          <br>
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
@@ -148,7 +150,7 @@ import * as XLSX from 'xlsx';
                   usuarios:
                 </p>
                 <form [formGroup]="areaForm">
-                  <mat-form-field appearance="outline" class="w-full">
+                  <mat-form-field appearance="fill" class="w-full">
                     <mat-label class="text-gray-600"
                       >Seleccionar Área</mat-label
                     >
@@ -195,8 +197,7 @@ import * as XLSX from 'xlsx';
                       >check_circle</mat-icon
                     >
                     <span
-                      >Todos los usuarios requieren validación del
-                      administrador</span
+                      >Todos los usuarios son validados automaticamente</span
                     >
                   </li>
                   <li class="flex items-start">
@@ -358,7 +359,7 @@ import * as XLSX from 'xlsx';
               class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
               <!-- Campo Nombre -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Nombre</mat-label>
                 <input matInput formControlName="nombre" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">person</mat-icon>
@@ -373,7 +374,7 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Apellido Paterno -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Apellido Paterno</mat-label>
                 <input matInput formControlName="apellidoPaterno" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">badge</mat-icon>
@@ -388,14 +389,14 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Apellido Materno -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Apellido Materno</mat-label>
                 <input matInput formControlName="apellidoMaterno" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">badge</mat-icon>
               </mat-form-field>
 
               <!-- Campo Función -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Función/Cargo</mat-label>
                 <mat-select formControlName="funcion" panelClass="rounded-lg">
                   <mat-option
@@ -420,7 +421,7 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Teléfono -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Teléfono</mat-label>
                 <input matInput formControlName="telefono" type="tel" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
@@ -435,7 +436,7 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Email -->
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field *ngIf="!isHamcoUser" appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
@@ -452,6 +453,17 @@ import * as XLSX from 'xlsx';
                   }}
                 </mat-error>
               </mat-form-field>
+              
+              <mat-form-field
+                *ngIf="isHamcoUser"
+                appearance="fill"
+                class="w-full"
+              >
+                <mat-label class="text-gray-600">Código de Pulsera</mat-label>
+                <input matInput formControlName="codigoPulsera" />
+                <mat-icon matPrefix class="text-gray-400 mr-2">confirmation_number</mat-icon>
+              </mat-form-field>
+
 
               <!-- Botón Agregar -->
               <div class="md:col-span-2 lg:col-span-3 flex justify-center mt-4">
@@ -551,6 +563,29 @@ import * as XLSX from 'xlsx';
                     <div class="text-gray-900">{{ u.email }}</div>
                   </td>
                 </ng-container>
+                <!-- Código de Pulsera Column -->
+                <ng-container matColumnDef="codigoPulsera">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC]"
+                  >
+                    <div class="flex items-center">
+                      <mat-icon class="mr-2 text-sm">confirmation_number</mat-icon>
+                      Código de Pulsera
+                    </div>
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let u"
+                    class="px-6 py-4 border-t border-gray-100"
+                  >
+                    <div class="text-gray-900 font-medium">
+                      {{ u.codigoPulsera || '—' }}
+                    </div>
+                  </td>
+                </ng-container>
+
 
                 <!-- Teléfono Column -->
                 <ng-container matColumnDef="telefono">
@@ -711,42 +746,58 @@ import * as XLSX from 'xlsx';
         }
       }
 
-      ::ng-deep .mat-form-field-outline {
-        background-color: white;
-        border-radius: 8px;
-      }
 
-      ::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline {
-        color: #e5e7eb;
-      }
 
-      ::ng-deep
-        .mat-form-field-appearance-outline.mat-focused
-        .mat-form-field-outline-thick {
-        color: #007a53;
-      }
+::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline-start,
+::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline-end {
+  border-color: #e5e7eb;
+}
 
-      ::ng-deep
-        .mat-form-field-appearance-outline
-        .mat-form-field-outline-gap {
-        border-top-color: transparent;
-      }
+::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-start,
+::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-end,
+::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-gap {
+  border-color: #007A53 !important;
+  border-width: 1px !important;
+}
 
-      ::ng-deep .mat-select-panel {
-        border-radius: 12px !important;
-        margin-top: 8px !important;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
-          0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-      }
+::ng-deep .mat-form-field-appearance-outline .mat-form-field-flex {
+  background-color: white !important;
+  border-radius: 8px !important;
+}
 
-      ::ng-deep .mat-option {
-        border-radius: 8px !important;
-        margin: 4px 8px !important;
-      }
 
-      ::ng-deep .mat-card {
-        border-radius: 16px !important;
-      }
+
+/* Ajuste para íconos en campos con prefijo */
+::ng-deep .mat-form-field-appearance-outline .mat-form-field-prefix {
+  align-self: center !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Asegurar que el input esté correctamente alineado */
+::ng-deep .mat-form-field-appearance-outline .mat-form-field-infix {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Mejorar la apariencia de los select */
+::ng-deep .mat-form-field-appearance-outline .mat-select-arrow-wrapper {
+  transform: translateY(0) !important;
+}
+/* Asegurar que todos los mat-form-field tengan el mismo estilo base */
+::ng-deep .mat-form-field {
+  width: 100% !important;
+}
+
+/* Mejorar la apariencia del hint */
+::ng-deep .mat-form-field-hint-wrapper {
+  padding-left: 0 !important;
+}
+
+/* Ajustar el espacio entre campos en el grid */
+.form-grid {
+  gap: 1rem !important;
+}
 
       table {
         border-collapse: separate;
@@ -780,6 +831,9 @@ export class UserFormComponent implements OnInit {
   private authService = inject(AuthService);
   private empresasService = inject(EmpresasService);
   private usersService = inject(UsersService);
+  isHamcoUser = false;
+
+
 
   selectedFileName: string | null = null;
   showManualForm = false;
@@ -808,7 +862,12 @@ export class UserFormComponent implements OnInit {
 
     this.canSelectEmpresa = userData?.roleName === 'AdminEspecial';
     this.currentUserRoleName = userData?.roleName || null;
+
+    // 🔥 NUEVO
+    this.isHamcoUser = userData?.apodo === 'hamco';
+    this.setTableColumns();
   }
+
 
   goToDashboard(): void {
     // AdminEspecial debe ir a /user (que es su dashboard)
@@ -825,7 +884,16 @@ export class UserFormComponent implements OnInit {
   areas: Area[] = [];
   funciones: Funcion[] = [];
   previewUsers: any[] = [];
-  columns = ['nombre', 'email', 'telefono', 'acciones'];
+  columns: string[] = [];
+
+  private setTableColumns() {
+    if (this.isHamcoUser) {
+      this.columns = ['nombre', 'codigoPulsera', 'telefono', 'acciones'];
+    } else {
+      this.columns = ['nombre', 'email', 'telefono', 'acciones'];
+    }
+  }
+
   removeUser(index: number) {
     this.previewUsers.splice(index, 1);
 
@@ -849,6 +917,7 @@ export class UserFormComponent implements OnInit {
     funcion: ['', Validators.required],
     telefono: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
+    codigoPulsera: [''],
   });
 
   empresas: Empresa[] = [];
@@ -918,6 +987,22 @@ export class UserFormComponent implements OnInit {
     await this.loadAreasByUsuario();
     await this.loadFunciones();
     await this.checkEmpresaAccess();
+
+    if (this.isHamcoUser) {
+      this.manualForm.get('codigoPulsera')?.setValidators([Validators.required]);
+      this.manualForm.get('email')?.clearValidators();
+    } else {
+      this.manualForm.get('email')?.setValidators([
+        Validators.required,
+        Validators.email,
+      ]);
+      this.manualForm.get('codigoPulsera')?.clearValidators();
+    }
+
+    this.manualForm.get('email')?.updateValueAndValidity();
+    this.manualForm.get('codigoPulsera')?.updateValueAndValidity();
+
+
     await this.loadEmpresas();
     this.pushNotification(
       'info',
@@ -1155,7 +1240,21 @@ export class UserFormComponent implements OnInit {
       return;
     }
 
-    const user = this.manualForm.value;
+    const formValue = this.manualForm.value;
+
+    const user: any = {
+      nombre: formValue.nombre,
+      apellidoPaterno: formValue.apellidoPaterno,
+      apellidoMaterno: formValue.apellidoMaterno,
+      funcion: formValue.funcion,
+      telefono: formValue.telefono,
+    };
+
+    if (this.isHamcoUser) {
+      user.codigoPulsera = formValue.codigoPulsera;
+    } else {
+      user.email = formValue.email;
+    }
 
     this.previewUsers.push(user);
     this.previewUsers = [...this.previewUsers];
@@ -1164,9 +1263,10 @@ export class UserFormComponent implements OnInit {
     this.pushNotification(
       'success',
       'Usuario agregado',
-      'El usuario se agrego correctamente a la lista.'
+      'El usuario se agregó correctamente a la lista.'
     );
   }
+
 
   async submitAll() {
     if (this.areaForm.invalid) {
@@ -1224,7 +1324,7 @@ export class UserFormComponent implements OnInit {
           ...u,
           areaId: this.areaForm.value.areaId,
           empresaId: empresaIdFinal,
-          estatus: this.canSelectEmpresa ? 'aprobado' : 'pendiente',
+          estatus: this.isHamcoUser ? 'canjeado' : 'aprobado',
         };
 
         // Solo si es AdminEspecial
