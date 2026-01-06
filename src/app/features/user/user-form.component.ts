@@ -241,7 +241,7 @@ import * as XLSX from 'xlsx';
                     Descargar Plantilla
                   </button>
                   <div class="text-sm text-gray-600">
-                    <p class="font-medium">Plantilla CSV</p>
+                    <p class="font-medium">Plantilla XLSX</p>
                     <p class="text-xs">Formato predefinido</p>
                   </div>
                 </div>
@@ -268,8 +268,8 @@ import * as XLSX from 'xlsx';
                   />
 
                   <div class="text-sm text-gray-600 flex-1">
-                    <p class="font-medium">Subir CSV</p>
-                    <p class="text-xs">Máx. 5MB, formato .csv</p>
+                    <p class="font-medium">Subir XLSX</p>
+                    <p class="text-xs">Máx. 5MB, formato .XLSX</p>
                   </div>
                 </div>
               </div>
@@ -313,7 +313,7 @@ import * as XLSX from 'xlsx';
                     >
                     <p class="text-gray-500">No hay archivo seleccionado</p>
                     <p class="text-xs text-gray-400 mt-1">
-                      Suba un archivo CSV para continuar
+                      Suba un archivo XLSX para continuar
                     </p>
                   </div>
                 </ng-template>
