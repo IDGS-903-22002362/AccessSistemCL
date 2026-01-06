@@ -23,6 +23,7 @@ import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserJornadaComponent } from '../user/user-jornada.component';
+import { UserFormEspecialComponent } from './user-formularioEspecial.component';
 
 @Component({
   selector: 'app-user-dashboard',
@@ -41,6 +42,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
     MatCheckboxModule,
     MatTooltipModule,
     UserJornadaComponent, // (opcional, ya lo importaste)
+    UserFormEspecialComponent //(componente de formulario especial para Hamco)
   ],
 
   template: `
@@ -59,7 +61,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
       </mat-toolbar>
 
       <div class="container mx-auto p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div *ngIf="!isHamcoUser" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <mat-card class="hover:shadow-lg transition-shadow">
             <mat-card-header>
               <mat-card-title>Usuarios Registrados</mat-card-title>
@@ -86,13 +88,13 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
 
           <mat-card class="hover:shadow-lg transition-shadow">
             <mat-card-header>
-              <mat-card-title>Denegados</mat-card-title>
+              <mat-card-title>Canjeados</mat-card-title>
             </mat-card-header>
             <mat-card-content class="text-center py-8">
-              <div class="text-4xl font-bold text-orange-600">
-                {{ usuariosRechazados }}
+              <div class="text-4xl font-bold text-gray-400">
+                {{ usuariosCanjeados }}
               </div>
-              <p class="text-gray-600 mt-2">Accesos denegados</p>
+              <p class="text-gray-600 mt-2">Accesos canjeados</p>
             </mat-card-content>
           </mat-card>
         </div>
@@ -103,6 +105,16 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
             <app-user-jornada></app-user-jornada>
           </div>
         </div>
+
+        <!-- Formulario especial SOLO para hamco -->
+        <div *ngIf="isHamcoUser" class="flex justify-center mb-8">
+          <div class="w-full max-w-6xl">
+            <app-user-form-especial></app-user-form-especial>
+          </div>
+        </div>
+
+
+
 
         <mat-card>
           <mat-card-header>
@@ -156,7 +168,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                     <option value="">Todos</option>
                     <option value="pendiente">Pendiente</option>
                     <option value="aprobado">Aprobado</option>
-                    <option value="rechazado">Rechazado</option>
+                    <option value="canjeado">Canjeado</option>
                   </select>
                 </div>
 
@@ -312,6 +324,8 @@ export class UserDashboardComponent {
   private empresasService = inject(EmpresasService);
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
+  isHamcoUser = false;
+
   // ===== Filtros =====
   showFilters = false;
 
@@ -369,7 +383,7 @@ export class UserDashboardComponent {
   //contadores
   totalUsuarios = 0;
   usuariosAprobados = 0;
-  usuariosRechazados = 0;
+  usuariosCanjeados = 0;
 
   async loadUsers(): Promise<void> {
     try {
@@ -411,8 +425,8 @@ export class UserDashboardComponent {
       this.usuariosAprobados = mapped.filter(
         (u) => u.estatusNormalized === 'aprobado'
       ).length;
-      this.usuariosRechazados = mapped.filter(
-        (u) => u.estatusNormalized === 'rechazado'
+      this.usuariosCanjeados = users.filter(
+        (u) => u.estatus === 'canjeado'
       ).length;
     } catch (error) {
       console.error('Error cargando usuarios', error);
@@ -488,15 +502,26 @@ export class UserDashboardComponent {
       if (user) {
         this.currentUserName =
           user.displayName ||
-          user.email?.split('@')[0] || // apodo desde email
+          user.email?.split('@')[0] ||
           'Usuario';
+
+
+        const email = user.email?.toLowerCase() || '';
+
+        this.isHamcoUser = email.endsWith('@hamco.mx');
+
       }
     });
 
     this.loadFunciones();
     this.loadEmpresas();
     this.loadUsers();
+    // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO
+    this.usersAccessService.userCreated$.subscribe(() => {
+      this.loadUsers();
+    });
   }
+
 
   goToRegistro() {
     this.router.navigate(['/user/registro']);
@@ -516,7 +541,7 @@ export class UserDashboardComponent {
     const classes: any = {
       pendiente: 'px-2 py-1 rounded bg-yellow-100 text-yellow-800',
       aprobado: 'px-2 py-1 rounded bg-green-100 text-green-800',
-      rechazado: 'px-2 py-1 rounded bg-red-100 text-red-800',
+      canjeado: 'px-2 py-1 rounded bg-grey-100 text-grey-800',
     };
     return classes[normalized] || 'px-2 py-1 rounded bg-gray-100 text-gray-800';
   }

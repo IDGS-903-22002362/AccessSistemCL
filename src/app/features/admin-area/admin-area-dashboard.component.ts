@@ -298,7 +298,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                         'bg-green-100 text-green-800':
                           solicitud.estatus === 'aprobado',
                         'bg-red-100 text-red-800':
-                          solicitud.estatus === 'rechazado'
+                          solicitud.estatus === 'canjeado'
                       }"
                     >
                       {{ solicitud.estatus }}
@@ -788,7 +788,7 @@ export class AdminAreaDashboardComponent implements OnInit {
         // Actualizar en Firestore
         // ✅ El correo se enviará automáticamente por Cloud Function
         await this.usersAccessService.updateUser(id, {
-          estatus: 'rechazado',
+          estatus: 'canjeado',
           reviewedBy: reviewerEmail,
           reviewedAt: new Date(),
         });
@@ -797,7 +797,7 @@ export class AdminAreaDashboardComponent implements OnInit {
         console.log('📧 Cloud Function enviará el correo automáticamente');
 
         // Actualizar localmente
-        solicitud.estatus = 'rechazado';
+        solicitud.estatus = 'canjeado';
         solicitud.reviewedBy = reviewerEmail;
         solicitud.reviewedAt = new Date();
         exitosos++;
@@ -826,7 +826,7 @@ export class AdminAreaDashboardComponent implements OnInit {
       (s) => s.estatus === 'aprobado'
     ).length;
     this.rejectedCount = this.filteredSolicitudes.filter(
-      (s) => s.estatus === 'rechazado'
+      (s) => s.estatus === 'canjeado'
     ).length;
   }
 
