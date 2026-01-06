@@ -279,7 +279,10 @@ export class UserJornadaComponent {
           user.displayName ||
           user.email?.split('@')[0];
 
-        this.isHamcoUser = apodo?.toLowerCase() === 'hamco'
+        const email = user.email?.toLowerCase() || '';
+
+        this.isHamcoUser = email.endsWith('@hamco.mx');
+
       }
     });
 

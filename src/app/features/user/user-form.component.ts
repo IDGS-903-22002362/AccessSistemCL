@@ -445,7 +445,7 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Email -->
-              <mat-form-field *ngIf="!isHamcoUser" appearance="fill" class="w-full">
+              <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
@@ -463,15 +463,6 @@ import * as XLSX from 'xlsx';
                 </mat-error>
               </mat-form-field>
               
-              <mat-form-field
-                *ngIf="isHamcoUser"
-                appearance="fill"
-                class="w-full"
-              >
-                <mat-label class="text-gray-600">Código de Pulsera</mat-label>
-                <input matInput formControlName="codigoPulsera" />
-                <mat-icon matPrefix class="text-gray-400 mr-2">confirmation_number</mat-icon>
-              </mat-form-field>
 
 
               <!-- Botón Agregar -->
@@ -930,7 +921,7 @@ export class UserFormComponent implements OnInit {
   private authService = inject(AuthService);
   private empresasService = inject(EmpresasService);
   private usersService = inject(UsersService);
-  isHamcoUser = false;
+
 
 
 
@@ -967,8 +958,7 @@ export class UserFormComponent implements OnInit {
     this.currentUserRoleName = userData?.roleName || null;
 
 
-    this.isHamcoUser = userData?.apodo === 'hamco';
-    this.setTableColumns();
+
   }
 
 
@@ -987,15 +977,10 @@ export class UserFormComponent implements OnInit {
   areas: Area[] = [];
   funciones: Funcion[] = [];
   previewUsers: any[] = [];
-  columns: string[] = [];
+  columns: string[] = ['nombre', 'email', 'telefono', 'acciones'];
 
-  private setTableColumns() {
-    if (this.isHamcoUser) {
-      this.columns = ['nombre', 'codigoPulsera', 'telefono', 'acciones'];
-    } else {
-      this.columns = ['nombre', 'email', 'telefono', 'acciones'];
-    }
-  }
+
+
 
   removeUser(index: number) {
     this.previewUsers.splice(index, 1);
@@ -1028,7 +1013,6 @@ export class UserFormComponent implements OnInit {
       ],
     ],
     email: ['', [Validators.required, Validators.email]],
-    codigoPulsera: [''],
   });
 
   empresas: Empresa[] = [];
@@ -1099,19 +1083,9 @@ export class UserFormComponent implements OnInit {
     await this.loadFunciones();
     await this.checkEmpresaAccess();
 
-    if (this.isHamcoUser) {
-      this.manualForm.get('codigoPulsera')?.setValidators([Validators.required]);
-      this.manualForm.get('email')?.clearValidators();
-    } else {
-      this.manualForm.get('email')?.setValidators([
-        Validators.required,
-        Validators.email,
-      ]);
-      this.manualForm.get('codigoPulsera')?.clearValidators();
-    }
+
 
     this.manualForm.get('email')?.updateValueAndValidity();
-    this.manualForm.get('codigoPulsera')?.updateValueAndValidity();
 
 
     await this.loadEmpresas();
@@ -1175,15 +1149,14 @@ export class UserFormComponent implements OnInit {
 
           if (!funcionEncontrada) {
             errors.push(
-              `Linea ${index + 2}: la funcion "${value}" no existe`
+              `Línea ${index + 2}: la función "${value}" no existe`
             );
           } else {
             user.funcion = funcionEncontrada.id;
           }
-          return;
+        } else {
+          user[key] = value;
         }
-
-        user[key] = value;
       });
 
       parsedUsers.push(user);
@@ -1194,7 +1167,7 @@ export class UserFormComponent implements OnInit {
       this.pushNotification(
         'error',
         'Archivo con errores',
-        `${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} más)` : ''}`
+        errors[0]
       );
       return;
     }
@@ -1208,6 +1181,7 @@ export class UserFormComponent implements OnInit {
     );
   }
 
+
   private fileReadError() {
     this.isParsing = false;
     this.pushNotification(
@@ -1217,27 +1191,97 @@ export class UserFormComponent implements OnInit {
     );
   }
   parseXLSX(buffer: ArrayBuffer) {
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+    try {
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
 
-    // Convierte la hoja a JSON usando encabezados
-    const rows = XLSX.utils.sheet_to_json<any>(worksheet, {
-      defval: '',
-      raw: false,
-    });
+      // Convertir a JSON manteniendo los tipos correctos
+      const rows = XLSX.utils.sheet_to_json<any>(worksheet, {
+        defval: '',
+        raw: false,
+      });
 
-    if (!rows.length) {
+      if (!rows.length) {
+        this.isParsing = false;
+        this.pushNotification(
+          'error',
+          'Archivo vacío',
+          'El archivo XLSX no contiene registros.'
+        );
+        return;
+      }
+
+      // Normalizar encabezados (quitar espacios, convertir a minúsculas)
+      const normalizedRows = rows.map((row: any) => {
+        const newRow: any = {};
+
+        // Mapear nombres de columnas esperados
+        const columnMapping: { [key: string]: string } = {
+          'nombre': 'nombre',
+          'nombre completo': 'nombre',
+          'nombres': 'nombre',
+          'apellidopaterno': 'apellidoPaterno',
+          'apellido paterno': 'apellidoPaterno',
+          'apellido_paterno': 'apellidoPaterno',
+          'paterno': 'apellidoPaterno',
+          'apellidomaterno': 'apellidoMaterno',
+          'apellido materno': 'apellidoMaterno',
+          'apellido_materno': 'apellidoMaterno',
+          'materno': 'apellidoMaterno',
+          'funcion': 'funcion',
+          'cargo': 'funcion',
+          'puesto': 'funcion',
+          'telefono': 'telefono',
+          'teléfono': 'telefono',
+          'celular': 'telefono',
+          'email': 'email',
+          'correo': 'email',
+          'correo electrónico': 'email',
+          'mail': 'email'
+        };
+
+        Object.keys(row).forEach((originalKey) => {
+          const normalizedKey = originalKey
+            .toLowerCase()
+            .trim()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // quitar acentos
+            .replace(/\s+/g, ''); // quitar espacios
+
+          const mappedKey = columnMapping[normalizedKey] || normalizedKey;
+
+          if (mappedKey && row[originalKey] !== undefined) {
+            // Limpiar valores de email si vienen con fórmulas HYPERLINK
+            if (['email', 'correo', 'mail'].includes(mappedKey)) {
+              let emailValue = String(row[originalKey]).trim();
+              emailValue = emailValue
+                .replace(/^=HYPERLINK\("mailto:/i, '')
+                .replace(/".*$/, '')
+                .replace(/"/g, '')
+                .replace(/'/g, '');
+              newRow[mappedKey] = emailValue;
+            } else {
+              newRow[mappedKey] = String(row[originalKey]).trim();
+            }
+          }
+        });
+
+        return newRow;
+      });
+
+      console.log('Filas normalizadas desde XLSX:', normalizedRows);
+      this.processParsedUsers(normalizedRows);
+
+    } catch (error) {
+      console.error('Error procesando XLSX:', error);
       this.isParsing = false;
       this.pushNotification(
         'error',
-        'Archivo vacío',
-        'El archivo XLSX no contiene registros.'
+        'Error en archivo XLSX',
+        'El archivo tiene un formato no válido.'
       );
-      return;
     }
-
-    this.processParsedUsers(rows);
   }
 
 
@@ -1340,7 +1384,9 @@ export class UserFormComponent implements OnInit {
 
     this.previewUsers = [...this.previewUsers, ...parsedUsers];
     this.isParsing = false;
-    this.processParsedUsers(parsedUsers);
+    this.previewUsers = [...this.previewUsers, ...parsedUsers];
+    this.isParsing = false;
+
     this.pushNotification(
       'success',
       'Archivo cargado',
@@ -1361,19 +1407,15 @@ export class UserFormComponent implements OnInit {
 
     const formValue = this.manualForm.value;
 
-    const user: any = {
+    const user = {
       nombre: formValue.nombre,
       apellidoPaterno: formValue.apellidoPaterno,
       apellidoMaterno: formValue.apellidoMaterno,
       funcion: formValue.funcion,
       telefono: formValue.telefono,
+      email: formValue.email,
     };
 
-    if (this.isHamcoUser) {
-      user.codigoPulsera = formValue.codigoPulsera;
-    } else {
-      user.email = formValue.email;
-    }
 
     this.previewUsers.push(user);
     this.previewUsers = [...this.previewUsers];
@@ -1447,7 +1489,7 @@ export class UserFormComponent implements OnInit {
           ...u,
           areaId: this.areaForm.value.areaId,
           empresaId: empresaIdFinal,
-          estatus: this.isHamcoUser ? 'canjeado' : 'aprobado',
+          estatus: 'aprobado',
         };
 
         // Solo si es AdminEspecial

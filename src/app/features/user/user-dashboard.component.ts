@@ -506,11 +506,10 @@ export class UserDashboardComponent {
           'Usuario';
 
 
-        const apodo =
-          user.displayName ||
-          user.email?.split('@')[0];
+        const email = user.email?.toLowerCase() || '';
 
-        this.isHamcoUser = apodo?.toLowerCase() === 'hamco';
+        this.isHamcoUser = email.endsWith('@hamco.mx');
+
       }
     });
 
