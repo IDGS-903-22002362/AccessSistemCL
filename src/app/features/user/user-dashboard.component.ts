@@ -1,6 +1,6 @@
-﻿import { Component, inject } from '@angular/core';
+﻿import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +15,7 @@ import {
   UsersAccesService,
   UserAccess,
 } from '../../core/services/usersSolicitud.service';
-import { take } from 'rxjs/operators';
+import { take, filter } from 'rxjs/operators';
 import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { EmpresasService } from '../../core/services/empresas.service';
@@ -42,7 +42,7 @@ import { UserFormEspecialComponent } from './user-formularioEspecial.component';
     MatCheckboxModule,
     MatTooltipModule,
     UserJornadaComponent, // (opcional, ya lo importaste)
-    UserFormEspecialComponent //(componente de formulario especial para Hamco)
+    UserFormEspecialComponent, //(componente de formulario especial para Hamco)
   ],
 
   template: `
@@ -61,7 +61,10 @@ import { UserFormEspecialComponent } from './user-formularioEspecial.component';
       </mat-toolbar>
 
       <div class="container mx-auto p-6">
-        <div *ngIf="!isHamcoUser" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div
+          *ngIf="!isHamcoUser"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+        >
           <mat-card class="hover:shadow-lg transition-shadow">
             <mat-card-header>
               <mat-card-title>Usuarios Registrados</mat-card-title>
@@ -112,9 +115,6 @@ import { UserFormEspecialComponent } from './user-formularioEspecial.component';
             <app-user-form-especial></app-user-form-especial>
           </div>
         </div>
-
-
-
 
         <mat-card>
           <mat-card-header>
@@ -315,10 +315,11 @@ import { UserFormEspecialComponent } from './user-formularioEspecial.component';
     `,
   ],
 })
-export class UserDashboardComponent {
+export class UserDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
+  private cdr = inject(ChangeDetectorRef);
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   private empresasService = inject(EmpresasService);
@@ -406,11 +407,11 @@ export class UserDashboardComponent {
           ...user,
           estatusNormalized,
           pdfUrlResolved,
-          funcionNombre: this.funcionesMap.get(user.funcion) || 'ƒ?"',
-          empresaNombre: this.empresasMap.get(user.empresaId) || 'ƒ?"',
+          funcionNombre: this.funcionesMap.get(user.funcion) || '?',
+          empresaNombre: this.empresasMap.get(user.empresaId) || '?',
           fecha: user.createdAt?.toDate
             ? user.createdAt.toDate().toLocaleDateString()
-            : 'ƒ?"',
+            : '?',
         };
       });
 
@@ -418,7 +419,7 @@ export class UserDashboardComponent {
       this.filteredUsers = mapped;
       this.updatePagination();
 
-      // opciones Ãºnicas
+      // opciones únicas
       this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
 
       this.totalUsuarios = users.length;
@@ -428,6 +429,9 @@ export class UserDashboardComponent {
       this.usuariosCanjeados = users.filter(
         (u) => u.estatus === 'canjeado'
       ).length;
+
+      // Forzar detección de cambios para actualizar la vista
+      this.cdr.detectChanges();
     } catch (error) {
       console.error('Error cargando usuarios', error);
     }
@@ -497,31 +501,45 @@ export class UserDashboardComponent {
     }
   }
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Cargar nombre del usuario
     this.authService.user$.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.currentUserName =
-          user.displayName ||
-          user.email?.split('@')[0] ||
-          'Usuario';
-
+          user.displayName || user.email?.split('@')[0] || 'Usuario';
 
         const email = user.email?.toLowerCase() || '';
 
         this.isHamcoUser = email.endsWith('@hamco.mx');
-
       }
     });
 
-    this.loadFunciones();
-    this.loadEmpresas();
-    this.loadUsers();
-    // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO
+    // Cargar datos iniciales - PRIMERO los mapas, LUEGO los usuarios
+    await this.loadFunciones();
+    await this.loadEmpresas();
+    await this.loadUsers();
+
+    // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO (tiempo real)
     this.usersAccessService.userCreated$.subscribe(() => {
       this.loadUsers();
     });
-  }
 
+    // Suscribirse a eventos de navegación para recargar datos
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe(async (event: any) => {
+        if (
+          event.url === '/user' ||
+          event.url.startsWith('/user?') ||
+          event.url.startsWith('/user#')
+        ) {
+          // Recargar mapas primero, luego usuarios
+          await this.loadFunciones();
+          await this.loadEmpresas();
+          await this.loadUsers();
+        }
+      });
+  }
 
   goToRegistro() {
     this.router.navigate(['/user/registro']);

@@ -28,7 +28,6 @@ import { Empresa } from '../../core/services/empresas.service';
 import { EmpresasService } from '../../core/services/empresas.service';
 import * as XLSX from 'xlsx';
 
-
 @Component({
   selector: 'app-user-form',
   standalone: true,
@@ -73,10 +72,7 @@ import * as XLSX from 'xlsx';
         </div>
 
         <!-- Notificaciones -->
-        <div
-          *ngIf="notifications.length"
-          class="notification-stack space-y-3"
-        >
+        <div *ngIf="notifications.length" class="notification-stack space-y-3">
           <div
             *ngFor="let note of notifications"
             class="notification"
@@ -114,7 +110,7 @@ import * as XLSX from 'xlsx';
               Empresa
             </mat-card-title>
           </div>
-          <br>
+          <br />
 
           <mat-card-content class="p-6">
             <form [formGroup]="empresaForm">
@@ -143,7 +139,7 @@ import * as XLSX from 'xlsx';
               Pulsera
             </mat-card-title>
           </div>
-          <br>
+          <br />
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
@@ -426,13 +422,13 @@ import * as XLSX from 'xlsx';
               <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Teléfono</mat-label>
                 <input
-                    matInput
-                    formControlName="telefono"
-                    type="tel"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    (keypress)="onlyNumbers($event)"
-                  />
+                  matInput
+                  formControlName="telefono"
+                  type="tel"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  (keypress)="onlyNumbers($event)"
+                />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
                 <mat-error
                   *ngIf="
@@ -445,7 +441,11 @@ import * as XLSX from 'xlsx';
               </mat-form-field>
 
               <!-- Campo Email -->
-              <mat-form-field appearance="fill" class="w-full">
+              <mat-form-field
+                *ngIf="!isHamcoUser"
+                appearance="fill"
+                class="w-full"
+              >
                 <mat-label class="text-gray-600">Correo Electrónico</mat-label>
                 <input matInput formControlName="email" type="email" />
                 <mat-icon matPrefix class="text-gray-400 mr-2">email</mat-icon>
@@ -462,8 +462,18 @@ import * as XLSX from 'xlsx';
                   }}
                 </mat-error>
               </mat-form-field>
-              
 
+              <mat-form-field
+                *ngIf="isHamcoUser"
+                appearance="fill"
+                class="w-full"
+              >
+                <mat-label class="text-gray-600">Código de Pulsera</mat-label>
+                <input matInput formControlName="codigoPulsera" />
+                <mat-icon matPrefix class="text-gray-400 mr-2"
+                  >confirmation_number</mat-icon
+                >
+              </mat-form-field>
 
               <!-- Botón Agregar -->
               <div class="md:col-span-2 lg:col-span-3 flex justify-center mt-4">
@@ -571,7 +581,9 @@ import * as XLSX from 'xlsx';
                     class="font-semibold text-[#007A53] px-6 py-4 bg-white border-b border-[#E6F2EC]"
                   >
                     <div class="flex items-center">
-                      <mat-icon class="mr-2 text-sm">confirmation_number</mat-icon>
+                      <mat-icon class="mr-2 text-sm"
+                        >confirmation_number</mat-icon
+                      >
                       Código de Pulsera
                     </div>
                   </th>
@@ -585,7 +597,6 @@ import * as XLSX from 'xlsx';
                     </div>
                   </td>
                 </ng-container>
-
 
                 <!-- Teléfono Column -->
                 <ng-container matColumnDef="telefono">
@@ -772,58 +783,62 @@ import * as XLSX from 'xlsx';
         }
       }
 
+      ::ng-deep
+        .mat-form-field-appearance-outline
+        .mat-form-field-outline-start,
+      ::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline-end {
+        border-color: #e5e7eb;
+      }
 
+      ::ng-deep
+        .mat-form-field-appearance-outline.mat-focused
+        .mat-form-field-outline-start,
+      ::ng-deep
+        .mat-form-field-appearance-outline.mat-focused
+        .mat-form-field-outline-end,
+      ::ng-deep
+        .mat-form-field-appearance-outline.mat-focused
+        .mat-form-field-outline-gap {
+        border-color: #007a53 !important;
+        border-width: 1px !important;
+      }
 
-::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline-start,
-::ng-deep .mat-form-field-appearance-outline .mat-form-field-outline-end {
-  border-color: #e5e7eb;
-}
+      ::ng-deep .mat-form-field-appearance-outline .mat-form-field-flex {
+        background-color: white !important;
+        border-radius: 8px !important;
+      }
 
-::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-start,
-::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-end,
-::ng-deep .mat-form-field-appearance-outline.mat-focused .mat-form-field-outline-gap {
-  border-color: #007A53 !important;
-  border-width: 1px !important;
-}
+      /* Ajuste para íconos en campos con prefijo */
+      ::ng-deep .mat-form-field-appearance-outline .mat-form-field-prefix {
+        align-self: center !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+      }
 
-::ng-deep .mat-form-field-appearance-outline .mat-form-field-flex {
-  background-color: white !important;
-  border-radius: 8px !important;
-}
+      /* Asegurar que el input esté correctamente alineado */
+      ::ng-deep .mat-form-field-appearance-outline .mat-form-field-infix {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+      }
 
+      /* Mejorar la apariencia de los select */
+      ::ng-deep .mat-form-field-appearance-outline .mat-select-arrow-wrapper {
+        transform: translateY(0) !important;
+      }
+      /* Asegurar que todos los mat-form-field tengan el mismo estilo base */
+      ::ng-deep .mat-form-field {
+        width: 100% !important;
+      }
 
+      /* Mejorar la apariencia del hint */
+      ::ng-deep .mat-form-field-hint-wrapper {
+        padding-left: 0 !important;
+      }
 
-/* Ajuste para íconos en campos con prefijo */
-::ng-deep .mat-form-field-appearance-outline .mat-form-field-prefix {
-  align-self: center !important;
-  padding-left: 8px !important;
-  padding-right: 8px !important;
-}
-
-/* Asegurar que el input esté correctamente alineado */
-::ng-deep .mat-form-field-appearance-outline .mat-form-field-infix {
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
-}
-
-/* Mejorar la apariencia de los select */
-::ng-deep .mat-form-field-appearance-outline .mat-select-arrow-wrapper {
-  transform: translateY(0) !important;
-}
-/* Asegurar que todos los mat-form-field tengan el mismo estilo base */
-::ng-deep .mat-form-field {
-  width: 100% !important;
-}
-
-/* Mejorar la apariencia del hint */
-::ng-deep .mat-form-field-hint-wrapper {
-  padding-left: 0 !important;
-}
-
-/* Ajustar el espacio entre campos en el grid */
-.form-grid {
-  gap: 1rem !important;
-}
+      /* Ajustar el espacio entre campos en el grid */
+      .form-grid {
+        gap: 1rem !important;
+      }
 
       table {
         border-collapse: separate;
@@ -921,9 +936,7 @@ export class UserFormComponent implements OnInit {
   private authService = inject(AuthService);
   private empresasService = inject(EmpresasService);
   private usersService = inject(UsersService);
-
-
-
+  isHamcoUser = false;
 
   selectedFileName: string | null = null;
   showManualForm = false;
@@ -957,10 +970,9 @@ export class UserFormComponent implements OnInit {
     this.canSelectEmpresa = userData?.roleName === 'AdminEspecial';
     this.currentUserRoleName = userData?.roleName || null;
 
-
-
+    this.isHamcoUser = userData?.apodo === 'hamco';
+    this.setTableColumns();
   }
-
 
   goToDashboard(): void {
     // AdminEspecial debe ir a /user (que es su dashboard)
@@ -977,10 +989,15 @@ export class UserFormComponent implements OnInit {
   areas: Area[] = [];
   funciones: Funcion[] = [];
   previewUsers: any[] = [];
-  columns: string[] = ['nombre', 'email', 'telefono', 'acciones'];
+  columns: string[] = [];
 
-
-
+  private setTableColumns() {
+    if (this.isHamcoUser) {
+      this.columns = ['nombre', 'codigoPulsera', 'telefono', 'acciones'];
+    } else {
+      this.columns = ['nombre', 'email', 'telefono', 'acciones'];
+    }
+  }
 
   removeUser(index: number) {
     this.previewUsers.splice(index, 1);
@@ -1008,8 +1025,8 @@ export class UserFormComponent implements OnInit {
       [
         Validators.required,
         Validators.pattern('^[0-9]+$'), // solo números
-        Validators.minLength(10),       // opcional (teléfono típico MX)
-        Validators.maxLength(10),       // opcional
+        Validators.minLength(10), // opcional (teléfono típico MX)
+        Validators.maxLength(10), // opcional
       ],
     ],
     email: ['', [Validators.required, Validators.email]],
@@ -1083,10 +1100,20 @@ export class UserFormComponent implements OnInit {
     await this.loadFunciones();
     await this.checkEmpresaAccess();
 
-
+    if (this.isHamcoUser) {
+      this.manualForm
+        .get('codigoPulsera')
+        ?.setValidators([Validators.required]);
+      this.manualForm.get('email')?.clearValidators();
+    } else {
+      this.manualForm
+        .get('email')
+        ?.setValidators([Validators.required, Validators.email]);
+      this.manualForm.get('codigoPulsera')?.clearValidators();
+    }
 
     this.manualForm.get('email')?.updateValueAndValidity();
-
+    this.manualForm.get('codigoPulsera')?.updateValueAndValidity();
 
     await this.loadEmpresas();
     this.pushNotification(
@@ -1124,7 +1151,6 @@ export class UserFormComponent implements OnInit {
     a.click();
   }
 
-
   private processParsedUsers(rows: any[]) {
     const errors: string[] = [];
     const parsedUsers: any[] = [];
@@ -1148,9 +1174,7 @@ export class UserFormComponent implements OnInit {
           );
 
           if (!funcionEncontrada) {
-            errors.push(
-              `Línea ${index + 2}: la función "${value}" no existe`
-            );
+            errors.push(`Línea ${index + 2}: la función "${value}" no existe`);
           } else {
             user.funcion = funcionEncontrada.id;
           }
@@ -1164,11 +1188,7 @@ export class UserFormComponent implements OnInit {
 
     if (errors.length) {
       this.isParsing = false;
-      this.pushNotification(
-        'error',
-        'Archivo con errores',
-        errors[0]
-      );
+      this.pushNotification('error', 'Archivo con errores', errors[0]);
       return;
     }
 
@@ -1180,7 +1200,6 @@ export class UserFormComponent implements OnInit {
       `Se agregaron ${parsedUsers.length} usuarios a la lista.`
     );
   }
-
 
   private fileReadError() {
     this.isParsing = false;
@@ -1218,27 +1237,27 @@ export class UserFormComponent implements OnInit {
 
         // Mapear nombres de columnas esperados
         const columnMapping: { [key: string]: string } = {
-          'nombre': 'nombre',
+          nombre: 'nombre',
           'nombre completo': 'nombre',
-          'nombres': 'nombre',
-          'apellidopaterno': 'apellidoPaterno',
+          nombres: 'nombre',
+          apellidopaterno: 'apellidoPaterno',
           'apellido paterno': 'apellidoPaterno',
-          'apellido_paterno': 'apellidoPaterno',
-          'paterno': 'apellidoPaterno',
-          'apellidomaterno': 'apellidoMaterno',
+          apellido_paterno: 'apellidoPaterno',
+          paterno: 'apellidoPaterno',
+          apellidomaterno: 'apellidoMaterno',
           'apellido materno': 'apellidoMaterno',
-          'apellido_materno': 'apellidoMaterno',
-          'materno': 'apellidoMaterno',
-          'funcion': 'funcion',
-          'cargo': 'funcion',
-          'puesto': 'funcion',
-          'telefono': 'telefono',
-          'teléfono': 'telefono',
-          'celular': 'telefono',
-          'email': 'email',
-          'correo': 'email',
+          apellido_materno: 'apellidoMaterno',
+          materno: 'apellidoMaterno',
+          funcion: 'funcion',
+          cargo: 'funcion',
+          puesto: 'funcion',
+          telefono: 'telefono',
+          teléfono: 'telefono',
+          celular: 'telefono',
+          email: 'email',
+          correo: 'email',
           'correo electrónico': 'email',
-          'mail': 'email'
+          mail: 'email',
         };
 
         Object.keys(row).forEach((originalKey) => {
@@ -1272,7 +1291,6 @@ export class UserFormComponent implements OnInit {
 
       console.log('Filas normalizadas desde XLSX:', normalizedRows);
       this.processParsedUsers(normalizedRows);
-
     } catch (error) {
       console.error('Error procesando XLSX:', error);
       this.isParsing = false;
@@ -1283,8 +1301,6 @@ export class UserFormComponent implements OnInit {
       );
     }
   }
-
-
 
   onFileSelected(event: any) {
     const file: File = event.target.files[0];
@@ -1300,14 +1316,12 @@ export class UserFormComponent implements OnInit {
       reader.onload = () => this.parseCSV(reader.result as string);
       reader.onerror = () => this.fileReadError();
       reader.readAsText(file);
-    }
-    else if (extension === 'xlsx') {
+    } else if (extension === 'xlsx') {
       const reader = new FileReader();
       reader.onload = (e: any) => this.parseXLSX(e.target.result);
       reader.onerror = () => this.fileReadError();
       reader.readAsArrayBuffer(file);
-    }
-    else {
+    } else {
       this.isParsing = false;
       this.pushNotification(
         'error',
@@ -1316,7 +1330,6 @@ export class UserFormComponent implements OnInit {
       );
     }
   }
-
 
   parseCSV(csv: string) {
     const errors: string[] = [];
@@ -1416,7 +1429,6 @@ export class UserFormComponent implements OnInit {
       email: formValue.email,
     };
 
-
     this.previewUsers.push(user);
     this.previewUsers = [...this.previewUsers];
 
@@ -1427,7 +1439,6 @@ export class UserFormComponent implements OnInit {
       'El usuario se agregó correctamente a la lista.'
     );
   }
-
 
   async submitAll() {
     if (this.areaForm.invalid) {
@@ -1514,7 +1525,15 @@ export class UserFormComponent implements OnInit {
         'Solicitudes enviadas',
         'Las solicitudes fueron enviadas correctamente.'
       );
-      this.router.navigate(['/user']);
+
+      // Esperar un momento adicional para que se procese el PDF
+      this.submitStatus = 'Procesando archivos...';
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Redirigir con un parámetro de query para forzar recarga
+      await this.router.navigate(['/user'], {
+        queryParams: { refresh: Date.now() },
+      });
     } catch (error) {
       console.error('Error al enviar solicitudes:', error);
       this.pushNotification(
