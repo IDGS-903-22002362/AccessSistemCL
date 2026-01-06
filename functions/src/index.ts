@@ -5,38 +5,38 @@
 import {
   onDocumentUpdated,
   onDocumentCreated,
-} from 'firebase-functions/v2/firestore';
-import { setGlobalOptions } from 'firebase-functions/v2';
-import * as admin from 'firebase-admin';
-import axios from 'axios';
-import PDFDocument from 'pdfkit';
-import QRCode from 'qrcode';
+} from "firebase-functions/v2/firestore";
+import {setGlobalOptions} from "firebase-functions/v2";
+import * as admin from "firebase-admin";
+import axios from "axios";
+import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
 
 // Inicializar Firebase Admin
 admin.initializeApp();
 
 // Configurar opciones globales
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({maxInstances: 10});
 
 // Mapa de equipos a escudos
 const escudosMap: Record<string, string> = {
-  america: 'america.png',
-  atlas: 'atlas.png',
-  chivas: 'chivas.png',
-  cruzazul: 'cruzazul.png',
-  juarez: 'juarez.png',
-  leon: 'leon.png',
-  mazatlan: 'mazatlan.png',
-  monterrey: 'monterrey.png',
-  necaxa: 'necaxa.png',
-  pachuca: 'pachuca.png',
-  puebla: 'puebla.png',
-  pumas: 'pumas.png',
-  queretaro: 'queretaro.png',
-  santos: 'santos.png',
-  tigres: 'tigres.png',
-  toluca: 'toluca.png',
-  tijuana: 'tijuana.png',
+  america: "america.png",
+  atlas: "atlas.png",
+  chivas: "chivas.png",
+  cruzazul: "cruzazul.png",
+  juarez: "juarez.png",
+  leon: "leon.png",
+  mazatlan: "mazatlan.png",
+  monterrey: "monterrey.png",
+  necaxa: "necaxa.png",
+  pachuca: "pachuca.png",
+  puebla: "puebla.png",
+  pumas: "pumas.png",
+  queretaro: "queretaro.png",
+  santos: "santos.png",
+  tigres: "tigres.png",
+  toluca: "toluca.png",
+  tijuana: "tijuana.png",
 };
 
 /**
@@ -45,9 +45,9 @@ const escudosMap: Record<string, string> = {
 function normalizarEquipo(equipo: string): string {
   return equipo
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Elimina acentos
-    .replace(/[^a-z]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Elimina acentos
+    .replace(/[^a-z]/g, "")
     .trim();
 }
 
@@ -63,7 +63,7 @@ function archivoEscudo(equipo: string): string | null {
   }
 
   // Match por palabras
-  const palabras = key.split(' ');
+  const palabras = key.split(" ");
   for (const palabra of palabras) {
     if (escudosMap[palabra]) {
       return escudosMap[palabra];
@@ -144,10 +144,10 @@ async function getEscudoBuffer(equipo: string): Promise<Buffer | null> {
  */
 async function downloadImage(url: string): Promise<Buffer | null> {
   try {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, {responseType: "arraybuffer"});
     return Buffer.from(response.data);
   } catch (error) {
-    console.error('Error descargando imagen:', error);
+    console.error("Error descargando imagen:", error);
     return null;
   }
 }
@@ -168,31 +168,31 @@ interface BrevoPayload {
  */
 export const sendEmailOnStatusChange = onDocumentUpdated(
   {
-    document: 'usersAccess/{userId}',
-    secrets: ['BREVO_API_KEY'],
+    document: "usersAccess/{userId}",
+    secrets: ["BREVO_API_KEY"],
   },
   async (event) => {
     const newData = event.data?.after.data();
     const previousData = event.data?.before.data();
 
     if (!newData || !previousData) {
-      console.log('Datos no disponibles');
+      console.log("Datos no disponibles");
       return;
     }
 
-    console.log('Documento actualizado:', {
+    console.log("Documento actualizado:", {
       userId: event.params.userId,
       previousStatus: previousData.estatus,
       newStatus: newData.estatus,
     });
 
     if (newData.estatus === previousData.estatus) {
-      console.log('Estatus sin cambios');
+      console.log("Estatus sin cambios");
       return;
     }
 
-    if (newData.estatus !== 'aprobado' && newData.estatus !== 'rechazado') {
-      console.log('Estatus no es aprobado/rechazado');
+    if (newData.estatus !== "aprobado" && newData.estatus !== "rechazado") {
+      console.log("Estatus no es aprobado/rechazado");
       return;
     }
 
@@ -209,29 +209,29 @@ export const sendEmailOnStatusChange = onDocumentUpdated(
  */
 export const sendEmailOnCreate = onDocumentCreated(
   {
-    document: 'usersAccess/{userId}',
-    secrets: ['BREVO_API_KEY'],
+    document: "usersAccess/{userId}",
+    secrets: ["BREVO_API_KEY"],
   },
   async (event) => {
     const newData = event.data?.data();
 
     if (!newData) {
-      console.log('Datos no disponibles en creacion');
+      console.log("Datos no disponibles en creacion");
       return;
     }
 
-    console.log('Documento creado:', {
+    console.log("Documento creado:", {
       userId: event.params.userId,
       estatus: newData.estatus,
       email: newData.email,
     });
 
-    if (newData.estatus !== 'aprobado') {
-      console.log('Documento no creado con estatus aprobado');
+    if (newData.estatus !== "aprobado") {
+      console.log("Documento no creado con estatus aprobado");
       return;
     }
 
-    console.log('Enviando correo por creacion aprobada');
+    console.log("Enviando correo por creacion aprobada");
     await sendEmailNotification(newData, event.params.userId, event.data?.ref);
   }
 );
@@ -244,47 +244,47 @@ async function getRelatedData(userData: any) {
     const db = admin.firestore();
 
     // Obtener área
-    let areaNombre = 'No especificada';
+    let areaNombre = "No especificada";
     if (userData.areaId) {
       try {
-        const areaDoc = await db.collection('areas').doc(userData.areaId).get();
+        const areaDoc = await db.collection("areas").doc(userData.areaId).get();
         if (areaDoc.exists) {
-          areaNombre = areaDoc.data()?.nombre || 'No especificada';
+          areaNombre = areaDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo área:', error);
+        console.log("Error obteniendo área:", error);
       }
     }
 
     // Obtener función
-    let funcionNombre = 'No especificada';
+    let funcionNombre = "No especificada";
     if (userData.funcion) {
       try {
         const funcionDoc = await db
-          .collection('funciones')
+          .collection("funciones")
           .doc(userData.funcion)
           .get();
         if (funcionDoc.exists) {
-          funcionNombre = funcionDoc.data()?.nombre || 'No especificada';
+          funcionNombre = funcionDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo función:', error);
+        console.log("Error obteniendo función:", error);
       }
     }
 
     // Obtener empresa
-    let empresaNombre = 'No especificada';
+    let empresaNombre = "No especificada";
     if (userData.empresaId) {
       try {
         const empresaDoc = await db
-          .collection('empresas')
+          .collection("empresas")
           .doc(userData.empresaId)
           .get();
         if (empresaDoc.exists) {
-          empresaNombre = empresaDoc.data()?.nombre || 'No especificada';
+          empresaNombre = empresaDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo empresa:', error);
+        console.log("Error obteniendo empresa:", error);
       }
     }
 
@@ -298,10 +298,10 @@ async function getRelatedData(userData: any) {
     try {
       const rtdb = admin.database();
       const jornadaSnapshot = await rtdb
-        .ref('jornada_activa')
-        .orderByChild('activo')
+        .ref("jornada_activa")
+        .orderByChild("activo")
         .equalTo(true)
-        .once('value');
+        .once("value");
 
       const jornadas = jornadaSnapshot.val();
       if (jornadas) {
@@ -314,7 +314,7 @@ async function getRelatedData(userData: any) {
           jornadaData.equipo_local &&
           jornadaData.equipo_visitante
         ) {
-          console.log('Obteniendo URLs de escudos para:', {
+          console.log("Obteniendo URLs de escudos para:", {
             local: jornadaData.equipo_local,
             visitante: jornadaData.equipo_visitante,
           });
@@ -327,23 +327,23 @@ async function getRelatedData(userData: any) {
           // Obtener URLs solo si faltan buffers (fallback)
           if (!escudoLocalBuffer || !escudoVisitanteBuffer) {
             [escudoLocalUrl, escudoVisitanteUrl] = await Promise.all([
-              !escudoLocalBuffer
-                ? getEscudoUrl(jornadaData.equipo_local)
-                : Promise.resolve(null),
-              !escudoVisitanteBuffer
-                ? getEscudoUrl(jornadaData.equipo_visitante)
-                : Promise.resolve(null),
+              !escudoLocalBuffer ?
+                getEscudoUrl(jornadaData.equipo_local) :
+                Promise.resolve(null),
+              !escudoVisitanteBuffer ?
+                getEscudoUrl(jornadaData.equipo_visitante) :
+                Promise.resolve(null),
             ]);
           }
 
-          console.log('URLs obtenidas:', {
+          console.log("URLs obtenidas:", {
             local: escudoLocalUrl,
             visitante: escudoVisitanteUrl,
           });
         }
       }
     } catch (error) {
-      console.log('Error obteniendo jornada activa:', error);
+      console.log("Error obteniendo jornada activa:", error);
     }
 
     return {
@@ -357,11 +357,11 @@ async function getRelatedData(userData: any) {
       escudoVisitanteBuffer,
     };
   } catch (error) {
-    console.error('Error obteniendo datos relacionados:', error);
+    console.error("Error obteniendo datos relacionados:", error);
     return {
-      areaNombre: 'No especificada',
-      funcionNombre: 'No especificada',
-      empresaNombre: 'No especificada',
+      areaNombre: "No especificada",
+      funcionNombre: "No especificada",
+      empresaNombre: "No especificada",
       jornadaData: null,
       escudoLocalUrl: null,
       escudoVisitanteUrl: null,
@@ -376,8 +376,8 @@ async function getRelatedData(userData: any) {
  */
 async function generateQRCode(userId: string): Promise<string> {
   return await QRCode.toDataURL(userId, {
-    errorCorrectionLevel: 'H',
-    type: 'image/png',
+    errorCorrectionLevel: "H",
+    type: "image/png",
     width: 200,
     margin: 1,
   });
@@ -394,35 +394,35 @@ async function generatePDF(
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
-        size: 'LETTER',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        size: "LETTER",
+        margins: {top: 50, bottom: 50, left: 50, right: 50},
       });
 
       const chunks: Buffer[] = [];
-      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
 
       const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
       // Generar QR (debe ser async)
       generateQRCode(userId)
         .then(async (qrDataUrl) => {
-          const qrBase64 = qrDataUrl.split(',')[1];
-          const qrBuffer = Buffer.from(qrBase64, 'base64');
+          const qrBase64 = qrDataUrl.split(",")[1];
+          const qrBuffer = Buffer.from(qrBase64, "base64");
 
           const pageWidth = doc.page.width;
           const margin = 50;
           const contentWidth = pageWidth - margin * 2;
           const colors = {
-            primary: '#0B5E3B',
-            text: '#111827',
-            muted: '#6B7280',
-            border: '#E5E7EB',
-            surface: '#F9FAFB',
-            alert: '#B91C1C',
-            alertSurface: '#FEF2F2',
-            alertBorder: '#FCA5A5',
+            primary: "#0B5E3B",
+            text: "#111827",
+            muted: "#6B7280",
+            border: "#E5E7EB",
+            surface: "#F9FAFB",
+            alert: "#B91C1C",
+            alertSurface: "#FEF2F2",
+            alertBorder: "#FCA5A5",
           };
 
           const drawSection = (
@@ -436,7 +436,7 @@ async function generatePDF(
             const startY = y;
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.primary)
               .text(title, x + padding, y + padding, {
                 width: width - padding * 2,
@@ -454,12 +454,12 @@ async function generatePDF(
             rows.forEach((row) => {
               doc
                 .fontSize(10)
-                .font('Helvetica-Bold')
+                .font("Helvetica-Bold")
                 .fillColor(colors.text)
                 .text(`${row.label}: `, x + padding, currentY, {
                   continued: true,
                 });
-              doc.font('Helvetica').text(row.value, {
+              doc.font("Helvetica").text(row.value, {
                 width: width - padding * 2,
               });
               currentY = doc.y + 4;
@@ -481,19 +481,19 @@ async function generatePDF(
             .fill(colors.primary);
           doc
             .fontSize(20)
-            .font('Helvetica-Bold')
-            .fillColor('white')
-            .text('CONSTANCIA UNICA DE ACREDITACION', margin, margin + 8, {
+            .font("Helvetica-Bold")
+            .fillColor("white")
+            .text("CONSTANCIA UNICA DE ACREDITACION", margin, margin + 8, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
           doc
             .fontSize(10)
-            .font('Helvetica')
-            .fillColor('white')
-            .text('Sistema de Accesos - Club Leon', margin, margin + 38, {
+            .font("Helvetica")
+            .fillColor("white")
+            .text("Sistema de Accesos - Club Leon", margin, margin + 38, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
 
           const contentTop = margin + 80;
@@ -506,12 +506,12 @@ async function generatePDF(
           // Seccion izquierda: datos del acreditado
           let leftY = contentTop;
           leftY = drawSection(
-            'DATOS DEL ACREDITADO',
+            "DATOS DEL ACREDITADO",
             [
-              { label: 'Nombre', value: fullName },
-              { label: 'Area asignada', value: relatedData.areaNombre },
-              { label: 'Funcion', value: relatedData.funcionNombre },
-              { label: 'Empresa', value: relatedData.empresaNombre },
+              {label: "Nombre", value: fullName},
+              {label: "Pulsera", value: relatedData.areaNombre},
+              {label: "Función", value: relatedData.funcionNombre},
+              {label: "Empresa", value: relatedData.empresaNombre},
             ],
             leftX,
             leftY,
@@ -528,9 +528,9 @@ async function generatePDF(
             // Título de la sección
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.primary)
-              .text('DATOS DE LA JORNADA', leftX + padding, leftY + padding, {
+              .text("DATOS DE LA JORNADA", leftX + padding, leftY + padding, {
                 width: leftWidth - padding * 2,
               });
 
@@ -547,20 +547,20 @@ async function generatePDF(
             // Jornada
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Jornada: ', leftX + padding, currentY, {
+              .text("Jornada: ", leftX + padding, currentY, {
                 continued: true,
               });
-            doc.font('Helvetica').text(relatedData.jornadaData.jornada);
+            doc.font("Helvetica").text(relatedData.jornadaData.jornada);
             currentY = doc.y + 6;
 
             // Partido con escudos
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Partido:', leftX + padding, currentY);
+              .text("Partido:", leftX + padding, currentY);
             currentY = doc.y + 6;
 
             // Escudos y equipos en línea horizontal
@@ -588,23 +588,23 @@ async function generatePDF(
               );
             }
 
-            console.log('Escudos descargados para PDF:', {
-              local: escudoLocalBuffer
-                ? `${escudoLocalBuffer.length} bytes`
-                : 'null',
-              visitante: escudoVisitanteBuffer
-                ? `${escudoVisitanteBuffer.length} bytes`
-                : 'null',
+            console.log("Escudos descargados para PDF:", {
+              local: escudoLocalBuffer ?
+                `${escudoLocalBuffer.length} bytes` :
+                "null",
+              visitante: escudoVisitanteBuffer ?
+                `${escudoVisitanteBuffer.length} bytes` :
+                "null",
             });
 
-            console.log('Insertando escudos en PDF:', {
+            console.log("Insertando escudos en PDF:", {
               tieneEscudoLocal: !!escudoLocalBuffer,
               tieneEscudoVisitante: !!escudoVisitanteBuffer,
             });
 
             // Escudo local - posicionado simétricamente a la izquierda del VS
             if (escudoLocalBuffer) {
-              console.log('Insertando escudo local en PDF');
+              console.log("Insertando escudo local en PDF");
               const escudoLocalX = centerX - vsWidth / 2 - spacing - escudoSize;
               doc.image(escudoLocalBuffer, escudoLocalX, escudosY, {
                 width: escudoSize,
@@ -612,22 +612,22 @@ async function generatePDF(
                 fit: [escudoSize, escudoSize],
               });
             } else {
-              console.log('No hay buffer de escudo local');
+              console.log("No hay buffer de escudo local");
             }
 
             // VS en el centro
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.muted)
-              .text('VS', centerX - vsWidth / 2, escudosY + 10, {
+              .text("VS", centerX - vsWidth / 2, escudosY + 10, {
                 width: vsWidth,
-                align: 'center',
+                align: "center",
               });
 
             // Escudo visitante - posicionado simétricamente a la derecha del VS
             if (escudoVisitanteBuffer) {
-              console.log('Insertando escudo visitante en PDF');
+              console.log("Insertando escudo visitante en PDF");
               const escudoVisitanteX = centerX + vsWidth / 2 + spacing;
               doc.image(escudoVisitanteBuffer, escudoVisitanteX, escudosY, {
                 width: escudoSize,
@@ -635,7 +635,7 @@ async function generatePDF(
                 fit: [escudoSize, escudoSize],
               });
             } else {
-              console.log('No hay buffer de escudo visitante');
+              console.log("No hay buffer de escudo visitante");
             }
 
             currentY = escudosY + escudoSize + 6;
@@ -643,42 +643,42 @@ async function generatePDF(
             // Nombres de los equipos centrados
             doc
               .fontSize(9)
-              .font('Helvetica')
+              .font("Helvetica")
               .fillColor(colors.text)
               .text(
                 `${relatedData.jornadaData.equipo_local} vs ` +
                   `${relatedData.jornadaData.equipo_visitante}`,
                 leftX + padding,
                 currentY,
-                { width: leftWidth - padding * 2, align: 'center' }
+                {width: leftWidth - padding * 2, align: "center"}
               );
             currentY = doc.y + 6;
 
             // Fecha, Hora, Estadio
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Fecha: ', leftX + padding, currentY, { continued: true });
-            doc.font('Helvetica').text(relatedData.jornadaData.fecha);
+              .text("Fecha: ", leftX + padding, currentY, {continued: true});
+            doc.font("Helvetica").text(relatedData.jornadaData.fecha);
             currentY = doc.y + 4;
 
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Hora: ', leftX + padding, currentY, { continued: true });
-            doc.font('Helvetica').text(relatedData.jornadaData.hora);
+              .text("Hora: ", leftX + padding, currentY, {continued: true});
+            doc.font("Helvetica").text(relatedData.jornadaData.hora);
             currentY = doc.y + 4;
 
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Estadio: ', leftX + padding, currentY, {
+              .text("Estadio: ", leftX + padding, currentY, {
                 continued: true,
               });
-            doc.font('Helvetica').text(relatedData.jornadaData.estadio);
+            doc.font("Helvetica").text(relatedData.jornadaData.estadio);
             currentY = doc.y + padding;
 
             // Dibujar el borde de la sección
@@ -699,10 +699,10 @@ async function generatePDF(
           } else {
             // Si no hay jornada activa
             const jornadaRows = [
-              { label: 'Estado', value: 'No hay jornada activa disponible' },
+              {label: "Estado", value: "No hay jornada activa disponible"},
             ];
             leftY = drawSection(
-              'DATOS DE LA JORNADA',
+              "DATOS DE LA JORNADA",
               jornadaRows,
               leftX,
               leftY,
@@ -717,28 +717,28 @@ async function generatePDF(
             .fillAndStroke(colors.surface, colors.border);
           doc
             .fontSize(11)
-            .font('Helvetica-Bold')
+            .font("Helvetica-Bold")
             .fillColor(colors.primary)
-            .text('CODIGO QR DE ACCESO', rightX + 10, contentTop + 10, {
+            .text("CODIGO QR DE ACCESO", rightX + 10, contentTop + 10, {
               width: rightWidth - 20,
-              align: 'center',
+              align: "center",
             });
 
           const qrSize = 170;
           const qrX = rightX + (rightWidth - qrSize) / 2;
           const qrY = contentTop + 40;
-          doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+          doc.image(qrBuffer, qrX, qrY, {width: qrSize, height: qrSize});
           doc
             .fontSize(9)
-            .font('Helvetica')
+            .font("Helvetica")
             .fillColor(colors.muted)
             .text(
-              'Presentar este codigo junto con identificacion oficial.',
+              "Presentar este codigo junto con identificacion oficial.",
               rightX + 10,
               qrY + qrSize + 8,
               {
                 width: rightWidth - 20,
-                align: 'center',
+                align: "center",
               }
             );
 
@@ -749,30 +749,30 @@ async function generatePDF(
             .fillAndStroke(colors.alertSurface, colors.alertBorder);
           doc
             .fontSize(12)
-            .font('Helvetica-Bold')
+            .font("Helvetica-Bold")
             .fillColor(colors.alert)
-            .text('AVISO IMPORTANTE', margin, afterColumnsY + 10, {
+            .text("AVISO IMPORTANTE", margin, afterColumnsY + 10, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
 
           const avisos = [
-            'El presente QR no garantiza el acceso al estadio.',
-            'Para ingresar es indispensable contar con pulsera y ' +
-              'realizar el proceso en el area de acreditacion.',
-            'Este QR:',
-            'No es un boleto.',
-            'No asegura lugar en tribuna.',
-            'Requiere la presentacion de identificacion oficial vigente.',
-            'Es valido unicamente para el partido del dia.',
-            'Es intransferible.',
-            'No valido para menores de edad.',
+            "El presente QR no garantiza el acceso al estadio.",
+            "Para ingresar es indispensable contar con pulsera y " +
+              "realizar el proceso en el area de acreditacion.",
+            "Este QR:",
+            "No es un boleto.",
+            "No asegura lugar en tribuna.",
+            "Requiere la presentacion de identificacion oficial vigente.",
+            "Es valido unicamente para el partido del dia.",
+            "Es intransferible.",
+            "No valido para menores de edad.",
           ];
 
           let avisoY = afterColumnsY + 38;
-          doc.fontSize(9).font('Helvetica').fillColor(colors.text);
+          doc.fontSize(9).font("Helvetica").fillColor(colors.text);
           avisos.forEach((aviso) => {
-            const prefix = aviso === 'Este QR:' ? '' : '- ';
+            const prefix = aviso === "Este QR:" ? "" : "- ";
             doc.text(`${prefix}${aviso}`, margin + 16, avisoY, {
               width: contentWidth - 32,
             });
@@ -783,17 +783,17 @@ async function generatePDF(
           doc
             .fontSize(8)
             .fillColor(colors.muted)
-            .text('Sistema de Accesos - Club Leon', margin, avisoY + 14, {
+            .text("Sistema de Accesos - Club Leon", margin, avisoY + 14, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
           doc.text(
-            `Generado: ${new Date().toLocaleString('es-MX')}`,
+            `Generado: ${new Date().toLocaleString("es-MX")}`,
             margin,
             doc.y,
             {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             }
           );
 
@@ -821,7 +821,7 @@ async function uploadPDFToStorage(
 
     await file.save(pdfBuffer, {
       metadata: {
-        contentType: 'application/pdf',
+        contentType: "application/pdf",
       },
     });
 
@@ -829,10 +829,10 @@ async function uploadPDFToStorage(
     await file.makePublic();
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
-    console.log('PDF subido a Storage:', publicUrl);
+    console.log("PDF subido a Storage:", publicUrl);
     return publicUrl;
   } catch (error) {
-    console.error('Error subiendo PDF a Storage:', error);
+    console.error("Error subiendo PDF a Storage:", error);
     throw error;
   }
 }
@@ -849,11 +849,11 @@ async function sendEmailNotification(
     const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
     if (!BREVO_API_KEY) {
-      console.error('API Key de Brevo no configurada');
-      throw new Error('Brevo API Key no configurada');
+      console.error("API Key de Brevo no configurada");
+      throw new Error("Brevo API Key no configurada");
     }
 
-    const isApproved = userData.estatus === 'aprobado';
+    const isApproved = userData.estatus === "aprobado";
     const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
     if (!isApproved) {
@@ -863,15 +863,15 @@ async function sendEmailNotification(
     }
 
     // Obtener datos relacionados
-    console.log('Obteniendo datos relacionados...');
+    console.log("Obteniendo datos relacionados...");
     const relatedData = await getRelatedData(userData);
 
     // Generar PDF
-    console.log('Generando PDF...');
+    console.log("Generando PDF...");
     const pdfBuffer = await generatePDF(userData, relatedData, userId);
 
     // Subir PDF a Storage
-    console.log('Subiendo PDF a Storage...');
+    console.log("Subiendo PDF a Storage...");
     const fileName = `acreditacion_${Date.now()}.pdf`;
     const pdfUrl = await uploadPDFToStorage(pdfBuffer, userId, fileName);
 
@@ -884,15 +884,15 @@ async function sendEmailNotification(
     }
 
     // Preparar correo con PDF adjunto
-    const pdfBase64 = pdfBuffer.toString('base64');
+    const pdfBase64 = pdfBuffer.toString("base64");
 
     const payload: BrevoPayload = {
       sender: {
-        email: 'luisrosasbocanegra@gmail.com',
-        name: 'Sistema de Accesos - Club León',
+        email: "sistemasleonfc@gmail.com",
+        name: "FUERZA DEPORTIVA DEL LEON",
       },
-      to: [{ email: userData.email, name: fullName }],
-      subject: '✅ Constancia de Acreditación - Club León',
+      to: [{email: userData.email, name: fullName}],
+      subject: "✅ Constancia de Acreditación - Club León",
       htmlContent: getApprovalEmailTemplate(fullName, pdfUrl),
       attachment: [
         {
@@ -902,19 +902,19 @@ async function sendEmailNotification(
       ],
     };
 
-    console.log('Enviando correo con PDF adjunto...');
+    console.log("Enviando correo con PDF adjunto...");
     const response = await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
+      "https://api.brevo.com/v3/smtp/email",
       payload,
       {
         headers: {
-          'api-key': BREVO_API_KEY,
-          'Content-Type': 'application/json',
+          "api-key": BREVO_API_KEY,
+          "Content-Type": "application/json",
         },
       }
     );
 
-    console.log('Correo enviado exitosamente:', {
+    console.log("Correo enviado exitosamente:", {
       to: userData.email,
       status: response.status,
       messageId: response.data?.messageId,
@@ -929,7 +929,7 @@ async function sendEmailNotification(
     }
   } catch (error) {
     const err = error as { message: string };
-    console.error('Error en proceso de envío:', {
+    console.error("Error en proceso de envío:", {
       error: err.message,
       userId: userId,
       email: userData.email,
@@ -955,18 +955,18 @@ async function sendRejectionEmail(
 ) {
   const payload: BrevoPayload = {
     sender: {
-      email: 'luisrosasbocanegra@gmail.com',
-      name: 'Sistema de Accesos - Club León',
+      email: "sistemasleonfc@gmail.com",
+      name: "FUERZA DEPORTIVA DEL LEON",
     },
-    to: [{ email: userData.email, name: fullName }],
-    subject: '❌ Solicitud de Acceso Rechazada',
+    to: [{email: userData.email, name: fullName}],
+    subject: "❌ Solicitud de Acceso Rechazada",
     htmlContent: getRejectionEmailTemplate(fullName),
   };
 
-  await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
+  await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
     headers: {
-      'api-key': apiKey,
-      'Content-Type': 'application/json',
+      "api-key": apiKey,
+      "Content-Type": "application/json",
     },
   });
 }
