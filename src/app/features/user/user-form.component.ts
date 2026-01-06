@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
 
 import { AreasService, Area } from '../../core/services/areas.service';
@@ -41,6 +42,7 @@ import * as XLSX from 'xlsx';
     MatCardModule,
     MatTableModule,
     MatIconModule,
+    MatProgressBarModule,
   ],
   template: `
     <div class="min-h-screen bg-white py-8 px-4 sm:px-6 lg:px-8">
@@ -683,6 +685,32 @@ import * as XLSX from 'xlsx';
         </div>
       </div>
     </div>
+
+    <ng-container *ngIf="isSubmitting">
+      <div class="submit-overlay" role="dialog" aria-live="polite">
+        <div class="submit-modal">
+          <div class="submit-header">
+            <div class="submit-icon">
+              <mat-icon>cloud_upload</mat-icon>
+            </div>
+            <div>
+              <p class="submit-title">Enviando solicitudes</p>
+              <p class="submit-subtitle">{{ submitStatus }}</p>
+            </div>
+          </div>
+          <mat-progress-bar
+            color="primary"
+            mode="determinate"
+            [value]="submitProgress"
+            class="submit-progress"
+          ></mat-progress-bar>
+          <div class="submit-meta">
+            <span>{{ submitCompleted }} / {{ submitTotal }}</span>
+            <span>{{ submitProgress }}%</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
   `,
   styles: [
     `
@@ -819,6 +847,70 @@ import * as XLSX from 'xlsx';
       tr:last-child td:last-child {
         border-bottom-right-radius: 12px;
       }
+
+      .submit-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        z-index: 60;
+      }
+
+      .submit-modal {
+        width: min(520px, 92vw);
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 24px 60px -30px rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(15, 23, 42, 0.06);
+      }
+
+      .submit-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .submit-icon {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3faf6;
+        color: #007a53;
+        border-radius: 12px;
+      }
+
+      .submit-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+      }
+
+      .submit-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+
+      .submit-progress {
+        height: 8px;
+        border-radius: 999px;
+      }
+
+      .submit-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.75rem;
+        color: #64748b;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
     `,
   ],
 })
@@ -841,6 +933,10 @@ export class UserFormComponent implements OnInit {
   currentUserRoleName: string | null = null;
   isParsing = false;
   isSubmitting = false;
+  submitProgress = 0;
+  submitTotal = 0;
+  submitCompleted = 0;
+  submitStatus = 'Preparando envio...';
   notifications: Array<{
     id: number;
     type: 'success' | 'error' | 'info';
@@ -1289,6 +1385,10 @@ export class UserFormComponent implements OnInit {
     }
 
     this.isSubmitting = true;
+    this.submitTotal = this.previewUsers.length;
+    this.submitCompleted = 0;
+    this.submitProgress = 0;
+    this.submitStatus = 'Validando informacion...';
     const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
     let empresaIdFinal: string | undefined;
@@ -1334,14 +1434,22 @@ export class UserFormComponent implements OnInit {
         }
 
         await this.usersAccessService.createUser(userData, authUser.email);
+        this.submitCompleted += 1;
+        this.submitProgress = Math.round(
+          (this.submitCompleted / this.submitTotal) * 100
+        );
+        this.submitStatus = `Enviando ${this.submitCompleted} de ${this.submitTotal}`;
       }
 
+      this.submitProgress = 100;
+      this.submitStatus = 'Solicitudes enviadas';
       this.previewUsers = [];
       this.pushNotification(
         'success',
         'Solicitudes enviadas',
         'Las solicitudes fueron enviadas correctamente.'
       );
+      this.router.navigate(['/user']);
     } catch (error) {
       console.error('Error al enviar solicitudes:', error);
       this.pushNotification(

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -37,7 +37,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
     MatPaginatorModule,
     MatInputModule,
     MatFormFieldModule,
-    FormsModule, // ✅ NECESARIO PARA ngModel
+    FormsModule, // âœ… NECESARIO PARA ngModel
     MatCheckboxModule,
     MatTooltipModule,
     UserJornadaComponent, // (opcional, ya lo importaste)
@@ -47,7 +47,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
     <div class="min-h-screen bg-gray-50">
       <mat-toolbar style="background-color:#007A53" class="shadow-md">
         <div class="flex items-center gap-3 text-white">
-          <img src="images/leon.png" alt="Club León" class="h-8 w-auto" />
+          <img src="images/leon.png" alt="Club LeÃ³n" class="h-8 w-auto" />
           <span class="font-medium"> Bienvenido, {{ currentUserName }} </span>
         </div>
 
@@ -160,7 +160,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   </select>
                 </div>
 
-                <!-- Función -->
+                <!-- FunciÃ³n -->
                 <div>
                   <label class="block text-sm font-medium text-[#007A53] mb-1">
                     Función
@@ -202,7 +202,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   </td>
                 </ng-container>
 
-                <!-- Función -->
+                <!-- FunciÃ³n -->
                 <ng-container matColumnDef="funcion">
                   <th mat-header-cell *matHeaderCellDef>Función</th>
                   <td mat-cell *matCellDef="let user">
@@ -215,7 +215,7 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                   <th mat-header-cell *matHeaderCellDef>Estatus</th>
                   <td mat-cell *matCellDef="let user">
                     <span [class]="getEstadoClass(user.estatus)">
-                      {{ user.estatus | titlecase }}
+                      {{ user.estatusNormalized || user.estatus | titlecase }}
                     </span>
                   </td>
                 </ng-container>
@@ -230,11 +230,12 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                 <ng-container matColumnDef="pdf">
                   <th mat-header-cell *matHeaderCellDef>PDF</th>
                   <td mat-cell *matCellDef="let user">
-                    @if (user.estatus === 'aprobado' && user.pdfUrl) {
+                    @if (user.estatusNormalized === 'aprobado' &&
+                    user.pdfUrlResolved) {
                     <button
                       mat-icon-button
                       color="primary"
-                      (click)="downloadPDF(user.pdfUrl, user.nombre)"
+                      (click)="downloadPDF(user.pdfUrlResolved, user.nombre)"
                       matTooltip="Descargar acreditación"
                     >
                       <mat-icon>download</mat-icon>
@@ -321,10 +322,10 @@ export class UserDashboardComponent {
   };
 
   allUsers: any[] = []; // respaldo sin filtrar
-  filteredUsers: any[] = []; // lo que se muestra después de filtros
-  paginatedUsers: any[] = []; // lo que se muestra en la página actual
+  filteredUsers: any[] = []; // lo que se muestra despuÃ©s de filtros
+  paginatedUsers: any[] = []; // lo que se muestra en la pÃ¡gina actual
 
-  // Paginación
+  // PaginaciÃ³n
   currentPage = 1;
   pageSize = 10;
   totalPages = 1;
@@ -363,7 +364,7 @@ export class UserDashboardComponent {
     'pdf',
   ];
 
-  dataSource: any[] = []; // Placeholder vacío
+  dataSource: any[] = []; // Placeholder vacÃ­o
 
   //contadores
   totalUsuarios = 0;
@@ -379,28 +380,39 @@ export class UserDashboardComponent {
         currentUser.email
       );
 
-      const mapped = users.map((user) => ({
-        ...user,
-        funcionNombre: this.funcionesMap.get(user.funcion) || '—',
-        empresaNombre: this.empresasMap.get(user.empresaId) || '—',
-        fecha: user.createdAt?.toDate
-          ? user.createdAt.toDate().toLocaleDateString()
-          : '—',
-      }));
+      const mapped = users.map((user) => {
+        const estatusNormalized = this.normalizeStatus(user.estatus);
+        const pdfUrlResolved =
+          user.pdfUrl ||
+          (user as { pdfURL?: string }).pdfURL ||
+          (user as { pdf_url?: string }).pdf_url ||
+          '';
+
+        return {
+          ...user,
+          estatusNormalized,
+          pdfUrlResolved,
+          funcionNombre: this.funcionesMap.get(user.funcion) || 'ƒ?"',
+          empresaNombre: this.empresasMap.get(user.empresaId) || 'ƒ?"',
+          fecha: user.createdAt?.toDate
+            ? user.createdAt.toDate().toLocaleDateString()
+            : 'ƒ?"',
+        };
+      });
 
       this.allUsers = mapped;
       this.filteredUsers = mapped;
       this.updatePagination();
 
-      // opciones únicas
+      // opciones Ãºnicas
       this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
 
       this.totalUsuarios = users.length;
-      this.usuariosAprobados = users.filter(
-        (u) => u.estatus === 'aprobado'
+      this.usuariosAprobados = mapped.filter(
+        (u) => u.estatusNormalized === 'aprobado'
       ).length;
-      this.usuariosRechazados = users.filter(
-        (u) => u.estatus === 'rechazado'
+      this.usuariosRechazados = mapped.filter(
+        (u) => u.estatusNormalized === 'rechazado'
       ).length;
     } catch (error) {
       console.error('Error cargando usuarios', error);
@@ -415,7 +427,7 @@ export class UserDashboardComponent {
   applyFilters(): void {
     let filtered = [...this.allUsers];
 
-    // Filtro de búsqueda por nombre o email
+    // Filtro de bÃºsqueda por nombre o email
     if (this.searchText.trim()) {
       const search = this.searchText.toLowerCase();
       filtered = filtered.filter((u) => {
@@ -426,7 +438,10 @@ export class UserDashboardComponent {
     }
 
     if (this.filters.estado) {
-      filtered = filtered.filter((u) => u.estatus === this.filters.estado);
+      const normalizedFilter = this.normalizeStatus(this.filters.estado);
+      filtered = filtered.filter(
+        (u) => u.estatusNormalized === normalizedFilter
+      );
     }
 
     if (this.filters.funcion) {
@@ -492,17 +507,22 @@ export class UserDashboardComponent {
       await this.authService.logout();
       this.router.navigate(['/login']);
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+      console.error('Error al cerrar sesiÃ³n:', error);
     }
   }
 
   getEstadoClass(estado: string): string {
+    const normalized = this.normalizeStatus(estado);
     const classes: any = {
       pendiente: 'px-2 py-1 rounded bg-yellow-100 text-yellow-800',
       aprobado: 'px-2 py-1 rounded bg-green-100 text-green-800',
       rechazado: 'px-2 py-1 rounded bg-red-100 text-red-800',
     };
-    return classes[estado] || 'px-2 py-1 rounded bg-gray-100 text-gray-800';
+    return classes[normalized] || 'px-2 py-1 rounded bg-gray-100 text-gray-800';
+  }
+
+  private normalizeStatus(value: string | undefined): string {
+    return (value || '').toString().toLowerCase().trim();
   }
 
   downloadPDF(pdfUrl: string, userName: string): void {
