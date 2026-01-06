@@ -154,7 +154,7 @@ import { EscudosService } from '../../core/services/escudos.service';
             </div>
           </div>
 
-          <div class="mt-4 flex justify-center">
+          <div *ngIf="!isHamcoUser" class="mt-4 flex justify-center">
             <button
               mat-raised-button
               style="background-color:#007A53; color: white; padding: 0.5rem 1.5rem;"
@@ -183,6 +183,7 @@ export class UserJornadaComponent {
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   funcionesMap = new Map<string, string>();
+  isHamcoUser = false;
 
   // URLs de los escudos
   escudoLocal: string | null = null;
@@ -273,6 +274,12 @@ export class UserJornadaComponent {
           user.displayName ||
           user.email?.split('@')[0] || // apodo desde email
           'Usuario';
+
+        const apodo =
+          user.displayName ||
+          user.email?.split('@')[0];
+
+        this.isHamcoUser = apodo?.toLowerCase() === 'hamco'
       }
     });
 

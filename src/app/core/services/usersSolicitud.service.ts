@@ -11,6 +11,7 @@ import {
   where,
   Timestamp,
 } from '@angular/fire/firestore';
+import { Subject } from 'rxjs';
 
 export interface UserAccess {
   id?: string;
@@ -24,7 +25,7 @@ export interface UserAccess {
   areaId: string;
   registrantEmail?: string;
   codigoPulsera?: string; // Código de la pulsera que se asignará al usuario
-  estatus: 'pendiente' | 'aprobado' | 'rechazado';
+  estatus: 'pendiente' | 'aprobado' | 'canjeado';
   reviewedBy?: string; // Email de quien aprobó/rechazó
   reviewedAt?: any; // Timestamp de cuándo se aprobó/rechazó
   createdAt?: any; // Timestamp de cuándo se creó
@@ -32,6 +33,7 @@ export interface UserAccess {
   pdfUrl?: string; // URL del PDF de acreditación generado
   emailSent?: boolean; // Indica si el email fue enviado
   emailSentAt?: any; // Timestamp de cuándo se envió el email
+
 }
 
 @Injectable({
@@ -40,6 +42,14 @@ export interface UserAccess {
 export class UsersAccesService {
   private firestore = inject(Firestore);
   private collectionName = 'usersAccess';
+  private userCreatedSource = new Subject<void>();
+  userCreated$ = this.userCreatedSource.asObservable();
+
+
+  //Este me permite escuchar cuando haya un usuario insertado para que se actualice la tabla de dashboard
+  notifyUserCreated() {
+    this.userCreatedSource.next();
+  }
 
   /**
    * Crear usuario en Firestore
@@ -57,6 +67,7 @@ export class UsersAccesService {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+      this.notifyUserCreated();
       return docRef.id;
     } catch (error) {
       console.error('Error al crear usuario:', error);

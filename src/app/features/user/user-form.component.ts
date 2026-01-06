@@ -138,7 +138,7 @@ import * as XLSX from 'xlsx';
           <div class="bg-[#007A53] px-6 py-4">
             <mat-card-title class="text-white text-xl font-semibold !m-0">
               <mat-icon class="mr-2 align-middle">group</mat-icon>
-              Área Asignada
+              Pulsera
             </mat-card-title>
           </div>
           <br>
@@ -423,7 +423,14 @@ import * as XLSX from 'xlsx';
               <!-- Campo Teléfono -->
               <mat-form-field appearance="fill" class="w-full">
                 <mat-label class="text-gray-600">Teléfono</mat-label>
-                <input matInput formControlName="telefono" type="tel" />
+                <input
+                    matInput
+                    formControlName="telefono"
+                    type="tel"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    (keypress)="onlyNumbers($event)"
+                  />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
                 <mat-error
                   *ngIf="
@@ -915,7 +922,15 @@ export class UserFormComponent implements OnInit {
     apellidoPaterno: ['', Validators.required],
     apellidoMaterno: [''],
     funcion: ['', Validators.required],
-    telefono: ['', Validators.required],
+    telefono: [
+      '',
+      [
+        Validators.required,
+        Validators.pattern('^[0-9]+$'), // solo números
+        Validators.minLength(10),       // opcional (teléfono típico MX)
+        Validators.maxLength(10),       // opcional
+      ],
+    ],
     email: ['', [Validators.required, Validators.email]],
     codigoPulsera: [''],
   });
@@ -1009,6 +1024,14 @@ export class UserFormComponent implements OnInit {
       'Listo para registrar',
       'Seleccione la empresa y el area antes de agregar usuarios.'
     );
+  }
+  onlyNumbers(event: KeyboardEvent) {
+    const charCode = event.which ? event.which : event.keyCode;
+
+    // Permite solo números (0–9)
+    if (charCode < 48 || charCode > 57) {
+      event.preventDefault();
+    }
   }
 
   async loadFunciones() {
