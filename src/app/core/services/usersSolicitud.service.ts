@@ -33,6 +33,7 @@ export interface UserAccess {
   pdfUrl?: string; // URL del PDF de acreditación generado
   emailSent?: boolean; // Indica si el email fue enviado
   emailSentAt?: any; // Timestamp de cuándo se envió el email
+  jornada?: number;
 
 }
 

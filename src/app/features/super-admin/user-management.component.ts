@@ -38,6 +38,7 @@ import {
   FuncionesService,
   Funcion,
 } from '../../core/services/funciones.service';
+import { SuperAdminDashboard } from './user-dashboard.component';
 
 @Component({
   selector: 'app-user-management',
@@ -59,6 +60,7 @@ import {
     MatListModule,
     MatCheckboxModule,
     MatTooltipModule,
+    SuperAdminDashboard
   ],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
@@ -631,6 +633,16 @@ import {
                   ></tr>
                 </table>
               </div>
+            </div>
+          </mat-tab>
+
+          <!-- TAB REPORTES -->
+          <mat-tab label="Reportes">
+            <div class="p-6">
+              <h2 class="text-xl font-semibold mb-4">Reportes</h2>
+
+              <h2 class="text-xl font-semibold mb-4">Lista de Reportes</h2>
+              <app-super-admin-reportes></app-super-admin-reportes>
             </div>
           </mat-tab>
         </mat-tab-group>
