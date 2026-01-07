@@ -10,8 +10,9 @@ import {
   UserCredential,
   sendPasswordResetEmail,
   updateProfile,
+  onAuthStateChanged,
 } from '@angular/fire/auth';
-import { Observable, from } from 'rxjs';
+import { Observable, from, ReplaySubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Injectable({
@@ -19,19 +20,55 @@ import { map } from 'rxjs/operators';
 })
 export class AuthService {
   private auth = inject(Auth);
+  private authStateSubject = new ReplaySubject<User | null>(1);
+  private authReadyPromise: Promise<void>;
 
   // Observable del usuario actual
   user$: Observable<User | null> = user(this.auth);
 
-  // Observable del estado de autenticación
-  authState$: Observable<User | null> = authState(this.auth);
+  // Observable del estado de autenticación usando ReplaySubject
+  // Esto asegura que siempre obtengamos el último valor conocido
+  authState$: Observable<User | null> = this.authStateSubject.asObservable();
 
   // Observable booleano de autenticación
   isAuthenticated$: Observable<boolean> = this.authState$.pipe(
-    map((user) => !!user)
+    map((user) => {
+      console.log(
+        '🔐 Estado de autenticación:',
+        user ? 'Autenticado' : 'No autenticado'
+      );
+      return !!user;
+    })
   );
 
-  constructor() {}
+  constructor() {
+    // Log para debugging
+    console.log('✅ AuthService inicializado');
+
+    // Crear promesa que se resuelve cuando onAuthStateChanged se ejecuta por primera vez
+    this.authReadyPromise = new Promise<void>((resolve) => {
+      // Escuchar cambios de autenticación y actualizar el subject
+      // onAuthStateChanged se ejecuta inmediatamente con el estado actual
+      // incluyendo sesiones persistidas en localStorage
+      onAuthStateChanged(this.auth, (user) => {
+        if (user) {
+          console.log('👤 Usuario detectado:', user.email);
+        } else {
+          console.log('🚪 No hay usuario autenticado');
+        }
+        this.authStateSubject.next(user);
+        resolve(); // Resolver la promesa la primera vez que se ejecuta
+      });
+    });
+  }
+
+  /**
+   * Esperar a que Firebase verifique el estado de autenticación
+   * Debe ser llamado antes de verificar el estado del usuario
+   */
+  async waitForAuthReady(): Promise<void> {
+    return this.authReadyPromise;
+  }
 
   /**
    * Login con email y password

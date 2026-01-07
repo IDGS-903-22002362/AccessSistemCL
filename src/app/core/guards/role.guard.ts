@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { Auth } from '@angular/fire/auth';
 import { UsersService } from '../services/users.service';
 import { RolesService } from '../services/roles.service';
+import { AuthService } from '../services/auth.service';
 
 const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
 
@@ -12,9 +13,13 @@ const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
  */
 export const roleGuard: CanActivateFn = async (route, state) => {
   const auth = inject(Auth);
+  const authService = inject(AuthService);
   const router = inject(Router);
   const usersService = inject(UsersService);
   const rolesService = inject(RolesService);
+
+  // Esperar a que Firebase verifique la sesión
+  await authService.waitForAuthReady();
 
   const user = auth.currentUser;
 
@@ -95,9 +100,13 @@ export const roleGuard: CanActivateFn = async (route, state) => {
 export const adminGuard: CanActivateFn = async (route, state) => {
   console.log('🛡️ adminGuard: Verificando acceso a', state.url);
   const auth = inject(Auth);
+  const authService = inject(AuthService);
   const router = inject(Router);
   const usersService = inject(UsersService);
   const rolesService = inject(RolesService);
+
+  // Esperar a que Firebase verifique la sesión
+  await authService.waitForAuthReady();
 
   const user = auth.currentUser;
   console.log('🛡️ adminGuard: Usuario actual:', user?.email);
