@@ -44,199 +44,252 @@ import { PartidosService } from '../../core/services/partidos.service';
     HttpClientModule,
   ],
   template: `
-  
-  
+    <!-- Cuadros Dinámicos con Información de Filtros -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <!-- Card: Total de Resultados -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">
+          Total de Resultados
+        </div>
+        <div class="text-3xl font-bold text-[#007A53]">
+          {{ filteredSolicitudes.length }}
+        </div>
+      </div>
 
-          <div
-            *ngIf="showFilters"
-            class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+      <!-- Card: Área Seleccionada -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Área</div>
+        <div class="text-xl font-semibold text-[#007A53] truncate">
+          {{ filters.area ? areasMap.get(filters.area) || 'Todas' : 'Todas' }}
+        </div>
+      </div>
+
+      <!-- Card: Jornada Seleccionada -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Jornada</div>
+        <div class="text-xl font-semibold text-[#007A53]">
+          {{ selectedJornada !== '' ? 'Jornada ' + selectedJornada : 'Todas' }}
+        </div>
+      </div>
+
+      <!-- Card: Partido -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Partido</div>
+        <div class="text-sm font-semibold text-[#007A53]">
+          {{ getPartidoByJornada(selectedJornada) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón para Mostrar/Ocultar Filtros -->
+    <div class="mb-4">
+      <button
+        (click)="toggleFilters()"
+        class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
+      >
+        <mat-icon>{{
+          showFilters ? 'filter_list_off' : 'filter_list'
+        }}</mat-icon>
+        {{ showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros' }}
+      </button>
+    </div>
+
+    <!-- Buscador -->
+    <div class="mb-4">
+      <div class="relative">
+        <mat-icon class="absolute left-3 top-3 text-gray-400">search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+          placeholder="Buscar por ID, nombre, correo..."
+          class="w-full pl-10 pr-4 py-2 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        />
+      </div>
+    </div>
+
+    <div
+      *ngIf="showFilters"
+      class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+    >
+      <!-- Panel de Filtros -->
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1">
+          Jornada
+        </label>
+        <select
+          [(ngModel)]="selectedJornada"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let partido of partidos" [ngValue]="partido.jornada">
+            Jornada {{ partido.jornada }} - {{ partido.equipo_local }} vs
+            {{ partido.equipo_visitante }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Área</label
+        >
+        <select
+          [(ngModel)]="filters.area"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let area of uniqueAreas" [value]="area">
+            {{ areasMap.get(area) || area }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Estado</label
+        >
+        <select
+          [(ngModel)]="filters.estado"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="canjeado">Canjeado</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Función</label
+        >
+        <select
+          [(ngModel)]="filters.funcion"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let func of uniqueFunciones" [value]="func">
+            {{ funcionesMap.get(func) || func }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Registrante</label
+        >
+        <select
+          [(ngModel)]="filters.registrante"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todos</option>
+          <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
+            {{ reg }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="text-center py-8">
+      <p class="text-gray-600">Cargando solicitudes...</p>
+    </div>
+
+    <div *ngIf="!loading && !hasPermissions" class="text-center py-8">
+      <mat-icon class="text-red-500 text-5xl">block</mat-icon>
+      <p class="text-red-600 mt-4 text-lg">
+        No tienes permisos para administrar solicitudes.
+      </p>
+      <p class="text-gray-600 mt-2">
+        Contacta con el administrador del sistema.
+      </p>
+    </div>
+
+    <div
+      *ngIf="!loading && hasPermissions && filteredSolicitudes.length === 0"
+      class="text-center py-8"
+    >
+      <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
+      <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
+    </div>
+
+    <div
+      *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
+      class="overflow-x-auto"
+    >
+      <table class="w-full">
+        <thead class="bg-[#007A53] text-white">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Nombre
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Email
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Área
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Función
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Teléfono
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Estado
+            </th>
+            <th>Jornada</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr
+            *ngFor="let solicitud of filteredSolicitudes"
+            class="hover:bg-[#007A53] hover:bg-opacity-5"
+            [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
+            [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
           >
-          <!-- Panel de Filtros -->
-   <div>
-  <label class="block text-sm font-medium text-[#007A53] mb-1">
-    Jornada
-  </label>
-  <select
-    [(ngModel)]="selectedJornada"
-    (change)="applyFilters()"
-    class="w-full p-2 border-2 border-[#007A53] rounded"
-  >
-    <option value="">Todas</option>
-    <option *ngFor="let j of jornadas" [ngValue]="j">
-      Jornada {{ j }}
-    </option>
-  </select>
-</div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Área</label
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">
+                {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
+              </div>
+              <div class="text-sm text-gray-500">
+                {{ solicitud.apellidoMaterno }}
+              </div>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.email }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ funcionesMap.get(solicitud.funcion) || solicitud.funcion }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.telefono }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span
+                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                [ngClass]="{
+                  'bg-yellow-100 text-yellow-800':
+                    solicitud.estatus === 'pendiente',
+                  'bg-green-100 text-green-800':
+                    solicitud.estatus === 'aprobado',
+                  'bg-red-100 text-red-800': solicitud.estatus === 'canjeado'
+                }"
               >
-              <select
-                [(ngModel)]="filters.area"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todas</option>
-                <option *ngFor="let area of uniqueAreas" [value]="area">
-                  {{ areasMap.get(area) || area }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Estado</label
-              >
-              <select
-                [(ngModel)]="filters.estado"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todos</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="aprobado">Aprobado</option>
-                <option value="canjeado">Canjeado</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Función</label
-              >
-              <select
-                [(ngModel)]="filters.funcion"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todas</option>
-                <option *ngFor="let func of uniqueFunciones" [value]="func">
-                  {{ funcionesMap.get(func) || func }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Registrante</label
-              >
-              <select
-                [(ngModel)]="filters.registrante"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todos</option>
-                <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
-                  {{ reg }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div *ngIf="loading" class="text-center py-8">
-            <p class="text-gray-600">Cargando solicitudes...</p>
-          </div>
-
-          <div *ngIf="!loading && !hasPermissions" class="text-center py-8">
-            <mat-icon class="text-red-500 text-5xl">block</mat-icon>
-            <p class="text-red-600 mt-4 text-lg">
-              No tienes permisos para administrar solicitudes.
-            </p>
-            <p class="text-gray-600 mt-2">
-              Contacta con el administrador del sistema.
-            </p>
-          </div>
-
-          <div
-            *ngIf="
-              !loading && hasPermissions && filteredSolicitudes.length === 0
-            "
-            class="text-center py-8"
-          >
-            <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
-            <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
-          </div>
-
-          <div
-            *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
-            class="overflow-x-auto"
-          >
-            <table class="w-full">
-              <thead class="bg-[#007A53] text-white">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Nombre
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Email
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Área
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Función
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Teléfono
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Estado
-                  </th>
-                  <th>
-                    Jornada
-                  </th>
-                  
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr
-                  *ngFor="let solicitud of filteredSolicitudes"
-                  class="hover:bg-[#007A53] hover:bg-opacity-5"
-                  [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
-                  [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
-                >
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
-                    </div>
-                    <div class="text-sm text-gray-500">
-                      {{ solicitud.apellidoMaterno }}
-                    </div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ solicitud.email }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{
-                      funcionesMap.get(solicitud.funcion) || solicitud.funcion
-                    }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ solicitud.telefono }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      [ngClass]="{
-                        'bg-yellow-100 text-yellow-800':
-                          solicitud.estatus === 'pendiente',
-                        'bg-green-100 text-green-800':
-                          solicitud.estatus === 'aprobado',
-                        'bg-red-100 text-red-800':
-                          solicitud.estatus === 'canjeado'
-                      }"
-                    >
-                      {{ solicitud.estatus }}
-                    </span>
-                  </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {{ solicitud.jornada || 'No asignada' }}
-                        </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-        `,
+                {{ solicitud.estatus }}
+              </span>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.jornada || 'No asignada' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `,
   styles: [],
 })
 export class SuperAdminDashboard implements OnInit {
@@ -253,11 +306,7 @@ export class SuperAdminDashboard implements OnInit {
   selectedPartido = '';
   jornadas: number[] = [];
   selectedJornada: number | '' = '';
-
-
-
-
-
+  searchTerm: string = ''; // Campo de búsqueda
 
   // Estado del componente
   loading = false;
@@ -288,7 +337,7 @@ export class SuperAdminDashboard implements OnInit {
     funcion: '',
     registrante: '',
   };
-  showFilters = false;
+  showFilters = false; // Comienza oculto
 
   // Opciones para filtros
   uniqueAreas: string[] = [];
@@ -305,7 +354,7 @@ export class SuperAdminDashboard implements OnInit {
 
       // 👉 EXTRAER JORNADAS ÚNICAS PARA EL SELECT
       const jornadasSet = new Set<number>();
-      partidos.forEach(p => {
+      partidos.forEach((p) => {
         if (p.jornada !== undefined) {
           jornadasSet.add(p.jornada);
         }
@@ -315,6 +364,28 @@ export class SuperAdminDashboard implements OnInit {
     });
   }
 
+  /**
+   * Obtener el partido correspondiente a una jornada
+   */
+  getPartidoByJornada(jornada: number | ''): string {
+    if (jornada === '' || !this.partidos.length) {
+      return 'Todas';
+    }
+
+    const partido = this.partidos.find((p) => p.jornada === jornada);
+    if (partido) {
+      return `${partido.equipo_local} vs ${partido.equipo_visitante}`;
+    }
+
+    return 'No asignado';
+  }
+
+  /**
+   * Toggle para mostrar/ocultar filtros
+   */
+  toggleFilters() {
+    this.showFilters = !this.showFilters;
+  }
 
   async ngOnInit() {
     console.log('🚀 Iniciando AdminArea Dashboard...');
@@ -490,7 +561,6 @@ export class SuperAdminDashboard implements OnInit {
 
       // Extraer opciones únicas para filtros
       this.extractFilterOptions();
-      this.showFilters = true;
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       this.filteredSolicitudes = [];
@@ -508,7 +578,7 @@ export class SuperAdminDashboard implements OnInit {
     const registrantes = new Set<string>();
 
     this.allSolicitudes
-      .filter(s => this.canViewSolicitud(s))
+      .filter((s) => this.canViewSolicitud(s))
       .forEach((sol) => {
         if (sol.areaId) areas.add(sol.areaId);
         if (sol.funcion) funciones.add(sol.funcion);
@@ -520,7 +590,6 @@ export class SuperAdminDashboard implements OnInit {
     this.uniqueRegistrantes = Array.from(registrantes);
   }
 
-
   /**
    * Aplicar filtros a las solicitudes
    */
@@ -528,6 +597,24 @@ export class SuperAdminDashboard implements OnInit {
     let filtered = this.allSolicitudes.filter((solicitud) =>
       this.canViewSolicitud(solicitud)
     );
+
+    // Filtro de búsqueda por ID, nombre o correo
+    if (this.searchTerm && this.searchTerm.trim() !== '') {
+      const searchLower = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((s) => {
+        const id = s.id?.toLowerCase() || '';
+        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${
+          s.apellidoMaterno || ''
+        }`.toLowerCase();
+        const email = s.email?.toLowerCase() || '';
+
+        return (
+          id.includes(searchLower) ||
+          nombre.includes(searchLower) ||
+          email.includes(searchLower)
+        );
+      });
+    }
 
     if (this.filters.area) {
       filtered = filtered.filter((s) => s.areaId === this.filters.area);
@@ -545,9 +632,7 @@ export class SuperAdminDashboard implements OnInit {
     }
     // ✅ FILTRO POR JORNADA - Asegúrate de manejar undefined
     if (this.selectedJornada !== '') {
-      filtered = filtered.filter(
-        s => s.jornada === this.selectedJornada
-      );
+      filtered = filtered.filter((s) => s.jornada === this.selectedJornada);
     }
 
     this.filteredSolicitudes = filtered;
