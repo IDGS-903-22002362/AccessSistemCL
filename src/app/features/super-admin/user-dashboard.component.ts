@@ -26,6 +26,9 @@ import {
 //import { UserJornadaComponent } from '../user/user-jornada.component';
 const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
 import { PartidosService } from '../../core/services/partidos.service';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
 
 @Component({
   selector: 'app-super-admin-reportes',
@@ -52,21 +55,21 @@ import { PartidosService } from '../../core/services/partidos.service';
             class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
           >
           <!-- Panel de Filtros -->
-   <div>
-  <label class="block text-sm font-medium text-[#007A53] mb-1">
-    Jornada
-  </label>
-  <select
-    [(ngModel)]="selectedJornada"
-    (change)="applyFilters()"
-    class="w-full p-2 border-2 border-[#007A53] rounded"
-  >
-    <option value="">Todas</option>
-    <option *ngFor="let j of jornadas" [ngValue]="j">
-      Jornada {{ j }}
-    </option>
-  </select>
-</div>
+          <div>
+          <label class="block text-sm font-medium text-[#007A53] mb-1">
+            Jornada
+          </label>
+          <select
+            [(ngModel)]="selectedJornada"
+            (change)="applyFilters()"
+            class="w-full p-2 border-2 border-[#007A53] rounded"
+          >
+            <option value="">Todas</option>
+            <option *ngFor="let j of jornadas" [ngValue]="j">
+              Jornada {{ j }}
+            </option>
+          </select>
+        </div>
             <div>
               <label class="block text-sm font-medium text-[#007A53] mb-1"
                 >Área</label
@@ -153,8 +156,23 @@ import { PartidosService } from '../../core/services/partidos.service';
             <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
           </div>
 
+          <!-- Botón para exportar PDF (agregar cerca de los filtros) -->
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold text-[#007A53]">{{ headerTitle }}</h1>
+      <button
+        *ngIf="hasPermissions && filteredSolicitudes.length > 0"
+        (click)="exportToPDF()"
+        [disabled]="exportingPDF"
+        class="bg-[#007A53] text-white px-4 py-2 rounded hover:bg-[#006747] flex items-center disabled:opacity-50"
+      >
+        <mat-icon class="mr-2">picture_as_pdf</mat-icon>
+        {{ exportingPDF ? 'Generando PDF...' : 'Exportar a PDF' }}
+      </button>
+    </div>
+
           <div
             *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
+            id="pdfTable"
             class="overflow-x-auto"
           >
             <table class="w-full">
@@ -248,11 +266,231 @@ export class SuperAdminDashboard implements OnInit {
   private usersAccessService = inject(UsersAccesService);
   private router = inject(Router);
   private partidosService = inject(PartidosService);
+  // Nueva propiedad para controlar estado de exportación
+  exportingPDF = false;
 
   partidos: any[] = [];
   selectedPartido = '';
   jornadas: number[] = [];
   selectedJornada: number | '' = '';
+
+  /**
+   * Exportar tabla filtrada a PDF
+   */
+  async exportToPDF(): Promise<void> {
+    this.exportingPDF = true;
+
+    try {
+      // Crear un título para el PDF
+      const title = `Reporte de Solicitudes - ${new Date().toLocaleDateString()}`;
+
+      // Obtener el elemento de la tabla
+      const element = document.getElementById('pdfTable');
+
+      if (!element) {
+        console.error('No se encontró la tabla para exportar');
+        alert('No se puede exportar porque la tabla no está disponible.');
+        this.exportingPDF = false;
+        return;
+      }
+
+      // Opciones para html2canvas
+      const options = {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      };
+
+      // Convertir a canvas
+      const canvas = await html2canvas(element, options);
+
+      // Calcular dimensiones
+      const imgWidth = 210; // A4 en mm
+      const pageHeight = 297; // A4 en mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // Crear PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      // Agregar título
+      pdf.setFontSize(16);
+      pdf.setTextColor(0, 122, 83);
+      pdf.text(title, 10, 10);
+
+      // Agregar información de filtros
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+
+      let yPosition = 20;
+
+      // Agregar detalles de los filtros aplicados
+      if (this.selectedJornada) {
+        pdf.text(`Jornada: ${this.selectedJornada}`, 10, yPosition);
+        yPosition += 5;
+      }
+
+      if (this.filters.area) {
+        pdf.text(`Área: ${this.areasMap.get(this.filters.area) || this.filters.area}`, 10, yPosition);
+        yPosition += 5;
+      }
+
+      if (this.filters.estado) {
+        pdf.text(`Estado: ${this.filters.estado}`, 10, yPosition);
+        yPosition += 5;
+      }
+
+      if (this.filters.funcion) {
+        pdf.text(`Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion}`, 10, yPosition);
+        yPosition += 5;
+      }
+
+      // ✅ NUEVO: Agregar información del registrante si hay filtro aplicado
+      if (this.filters.registrante) {
+        pdf.text(`Registrante: ${this.filters.registrante}`, 10, yPosition);
+        yPosition += 5;
+      }
+
+      // ✅ NUEVO: Agregar información general de todos los registrantes únicos en los datos filtrados
+      if (this.filteredSolicitudes.length > 0) {
+        // Obtener todos los registrantes únicos de los datos filtrados
+        const registrantesUnicos = [...new Set(this.filteredSolicitudes.map(s => s.registrantEmail).filter(Boolean))];
+
+        if (registrantesUnicos.length > 0) {
+          pdf.text('Registrantes en el reporte:', 10, yPosition);
+          yPosition += 5;
+
+          // Mostrar cada registrante en una línea (limitado a los primeros 3 por espacio)
+          registrantesUnicos.slice(0, 3).forEach((registrante, index) => {
+            pdf.text(`  • ${registrante}`, 15, yPosition);
+            yPosition += 5;
+          });
+
+          // Si hay más de 3 registrantes, mostrar contador
+          if (registrantesUnicos.length > 3) {
+            pdf.text(`  • ... y ${registrantesUnicos.length - 3} más`, 15, yPosition);
+            yPosition += 5;
+          }
+        }
+      }
+
+      // Agregar resumen de resultados
+      pdf.text(`Total de registros: ${this.filteredSolicitudes.length}`, 10, yPosition + 5);
+      yPosition += 10;
+
+      // Agregar la imagen de la tabla
+      const imgData = canvas.toDataURL('image/png');
+
+      // Calcular si la tabla cabe en una página
+      if (imgHeight < pageHeight - yPosition) {
+        // Cabe en una página
+        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth - 20, imgHeight);
+      } else {
+        // Necesita múltiples páginas
+        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth - 20, imgHeight);
+
+        // Calcular si necesitamos páginas adicionales
+        let heightLeft = imgHeight - (pageHeight - yPosition);
+        let pageCount = 1;
+
+        while (heightLeft > 0) {
+          pageCount++;
+          pdf.addPage();
+          // Calcular nueva posición para la parte restante de la imagen
+          const newY = -((pageHeight - 20) * (pageCount - 1) - yPosition);
+          pdf.addImage(imgData, 'PNG', 10, newY, imgWidth - 20, imgHeight);
+          heightLeft -= (pageHeight - 20);
+        }
+      }
+
+      // Guardar el PDF
+      const fecha = new Date().toISOString().split('T')[0];
+      const hora = new Date().toLocaleTimeString('es-MX', { hour12: false }).replace(/:/g, '-');
+      const fileName = `reporte_solicitudes_${fecha}_${hora}.pdf`;
+      pdf.save(fileName);
+
+      console.log(' PDF exportado exitosamente');
+
+    } catch (error) {
+      console.error(' Error al exportar PDF:', error);
+      alert('Error al generar el PDF. Por favor, intenta nuevamente.');
+    } finally {
+      this.exportingPDF = false;
+    }
+  }
+
+  /**
+   * Método alternativo: Exportar solo datos (sin captura de pantalla)
+   * Útil para tablas muy grandes
+   */
+  exportToPDFSimple(): void {
+    const pdf = new jsPDF('p', 'pt', 'a4');
+
+    // Título
+    pdf.setFontSize(18);
+    pdf.setTextColor(0, 122, 83);
+    pdf.text('Reporte de Solicitudes', 40, 40);
+
+    // Información de filtros
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+
+    let y = 80;
+    const pageWidth = pdf.internal.pageSize.width;
+    const margin = 40;
+    const availableWidth = pageWidth - 2 * margin;
+
+    // Encabezados de tabla
+    const headers = [
+      ['Nombre', 'Email', 'Área', 'Función', 'Teléfono', 'Estado', 'Jornada']
+    ];
+
+    // Datos de la tabla
+    const data = this.filteredSolicitudes.map(solicitud => [
+      `${solicitud.nombre} ${solicitud.apellidoPaterno}`,
+      solicitud.email || '',
+      this.areasMap.get(solicitud.areaId) || solicitud.areaId || '',
+      this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '',
+      solicitud.telefono || '',
+      solicitud.estatus || '',
+      solicitud.jornada || 'No asignada'
+    ]);
+
+    // Configurar tabla
+    (pdf as any).autoTable({
+      startY: y,
+      head: headers,
+      body: data,
+      margin: { top: y, left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [0, 122, 83] }, // Color verde
+      alternateRowStyles: { fillColor: [240, 240, 240] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.15 }, // Nombre
+        1: { cellWidth: availableWidth * 0.20 }, // Email
+        2: { cellWidth: availableWidth * 0.15 }, // Área
+        3: { cellWidth: availableWidth * 0.15 }, // Función
+        4: { cellWidth: availableWidth * 0.10 }, // Teléfono
+        5: { cellWidth: availableWidth * 0.10 }, // Estado
+        6: { cellWidth: availableWidth * 0.10 }  // Jornada
+      }
+    });
+
+    // Pie de página
+    const pageCount = (pdf as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.text(
+        `Página ${i} de ${pageCount} - Generado el ${new Date().toLocaleDateString()}`,
+        margin,
+        pdf.internal.pageSize.height - 20
+      );
+    }
+
+    // Guardar
+    pdf.save(`reporte_solicitudes_${new Date().toISOString().split('T')[0]}.pdf`);
+  }
 
 
 
