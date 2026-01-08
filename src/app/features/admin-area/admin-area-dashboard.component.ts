@@ -305,24 +305,35 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-center">
-                    <button
-                      *ngIf="
-                        solicitud.estatus === 'aprobado' && solicitud.pdfUrl
-                      "
-                      mat-icon-button
-                      color="primary"
-                      (click)="downloadPDF(solicitud.pdfUrl, solicitud.nombre)"
-                      matTooltip="Descargar acreditación"
-                    >
-                      <mat-icon>download</mat-icon>
-                    </button>
-                    <span
-                      *ngIf="
-                        !(solicitud.estatus === 'aprobado' && solicitud.pdfUrl)
-                      "
-                      class="text-gray-400"
-                      >-</span
-                    >
+                    <div class="flex gap-2 justify-center">
+                      <button
+                        *ngIf="
+                          solicitud.estatus === 'aprobado' && solicitud.pdfUrl
+                        "
+                        mat-icon-button
+                        color="primary"
+                        (click)="
+                          downloadPDF(solicitud.pdfUrl, solicitud.nombre)
+                        "
+                        matTooltip="Descargar acreditación"
+                      >
+                        <mat-icon>download</mat-icon>
+                      </button>
+                      <button
+                        *ngIf="solicitud.estatus === 'aprobado'"
+                        mat-icon-button
+                        color="accent"
+                        (click)="resendEmail(solicitud.id!, solicitud.nombre)"
+                        matTooltip="Reenviar correo con QR/PDF"
+                      >
+                        <mat-icon>email</mat-icon>
+                      </button>
+                      <span
+                        *ngIf="solicitud.estatus !== 'aprobado'"
+                        class="text-gray-400"
+                        >-</span
+                      >
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -852,10 +863,45 @@ export class AdminAreaDashboardComponent implements OnInit {
     // Crear un elemento anchor temporal para descargar
     const link = document.createElement('a');
     link.href = pdfUrl;
+    link.download = `acreditacion_${userName}.pdf`;
     link.target = '_blank';
-    link.download = `acreditacion_${userName.replace(/\s+/g, '_')}.pdf`;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+  }
+
+  async resendEmail(userId: string, userName: string): Promise<void> {
+    if (!userId) {
+      console.error('ID de usuario no válido');
+      return;
+    }
+
+    if (!confirm(`¿Desea reenviar el correo de acreditación a ${userName}?`)) {
+      return;
+    }
+
+    this.processing = true;
+
+    try {
+      const result = await this.usersAccessService.resendAccreditationEmail(
+        userId
+      );
+
+      if (result.success) {
+        alert(
+          `Correo enviado exitosamente a ${userName}.\n\n` +
+            `${
+              result.hasPdf
+                ? 'Se envió el PDF existente.'
+                : 'Se generó y envió un nuevo PDF.'
+            }`
+        );
+      }
+    } catch (error: any) {
+      console.error('Error al reenviar correo:', error);
+      alert(
+        `Error al reenviar correo: ${error.message || 'Error desconocido'}`
+      );
+    } finally {
+      this.processing = false;
+    }
   }
 }

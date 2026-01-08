@@ -11,6 +11,7 @@ import {
   where,
   Timestamp,
 } from '@angular/fire/firestore';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Subject } from 'rxjs';
 
 export interface UserAccess {
@@ -34,7 +35,6 @@ export interface UserAccess {
   emailSent?: boolean; // Indica si el email fue enviado
   emailSentAt?: any; // Timestamp de cuándo se envió el email
   jornada?: number;
-
 }
 
 @Injectable({
@@ -42,10 +42,10 @@ export interface UserAccess {
 })
 export class UsersAccesService {
   private firestore = inject(Firestore);
+  private functions = inject(Functions);
   private collectionName = 'usersAccess';
   private userCreatedSource = new Subject<void>();
   userCreated$ = this.userCreatedSource.asObservable();
-
 
   //Este me permite escuchar cuando haya un usuario insertado para que se actualice la tabla de dashboard
   notifyUserCreated() {
@@ -187,5 +187,27 @@ export class UsersAccesService {
       id: doc.id,
       ...doc.data(),
     })) as UserAccess[];
+  }
+
+  /**
+   * Reenviar correo de acreditación con PDF/QR
+   */
+  async resendAccreditationEmail(userId: string): Promise<{
+    success: boolean;
+    message: string;
+    hasPdf: boolean;
+  }> {
+    try {
+      const resendFunction = httpsCallable<
+        { userId: string },
+        { success: boolean; message: string; hasPdf: boolean }
+      >(this.functions, 'resendAccreditationEmail');
+
+      const result = await resendFunction({ userId });
+      return result.data;
+    } catch (error: any) {
+      console.error('Error al reenviar correo:', error);
+      throw new Error(error?.message || 'Error al reenviar correo');
+    }
   }
 }

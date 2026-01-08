@@ -1,4 +1,4 @@
-﻿import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
+﻿import { Component, inject, OnInit, ChangeDetectorRef, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -22,6 +22,9 @@ import { EmpresasService } from '../../core/services/empresas.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -44,6 +47,9 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
     FormsModule, // âœ… NECESARIO PARA ngModel
     MatCheckboxModule,
     MatTooltipModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatProgressSpinnerModule,
     UserJornadaComponent, // (opcional, ya lo importaste)
     UserFormEspecialComponent, //(componente de formulario especial para Hamco)
   ],
@@ -245,16 +251,27 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                 <ng-container matColumnDef="pdf">
                   <th mat-header-cell *matHeaderCellDef>PDF</th>
                   <td mat-cell *matCellDef="let user">
-                    @if (user.estatusNormalized === 'aprobado' &&
-                    user.pdfUrlResolved) {
-                    <button
-                      mat-icon-button
-                      color="primary"
-                      (click)="downloadPDF(user.pdfUrlResolved, user.nombre)"
-                      matTooltip="Descargar acreditación"
-                    >
-                      <mat-icon>download</mat-icon>
-                    </button>
+                    @if (user.estatusNormalized === 'aprobado') {
+                    <div class="flex items-center gap-2">
+                      @if (user.pdfUrlResolved) {
+                      <button
+                        mat-icon-button
+                        color="primary"
+                        (click)="downloadPDF(user.pdfUrlResolved, user.nombre)"
+                        matTooltip="Descargar acreditación"
+                      >
+                        <mat-icon>download</mat-icon>
+                      </button>
+                      }
+                      <button
+                        mat-icon-button
+                        color="accent"
+                        (click)="resendEmail(user.id, user.nombre)"
+                        matTooltip="Reenviar correo con QR"
+                      >
+                        <mat-icon>email</mat-icon>
+                      </button>
+                    </div>
                     } @else {
                     <span class="text-gray-400">-</span>
                     }
@@ -349,6 +366,8 @@ export class UserDashboardComponent implements OnInit {
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
   private cdr = inject(ChangeDetectorRef);
+  private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   private empresasService = inject(EmpresasService);
@@ -694,5 +713,135 @@ export class UserDashboardComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  async resendEmail(userId: string, userName: string): Promise<void> {
+    if (!userId) {
+      this.snackBar.open('Error: ID de usuario no disponible', 'Cerrar', {
+        duration: 5000,
+        panelClass: ['error-snackbar'],
+        horizontalPosition: 'center',
+        verticalPosition: 'top',
+      });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Reenviar Acreditación',
+        message: `¿Deseas reenviar el correo de acreditación a ${userName}?`,
+        confirmText: 'Reenviar',
+        cancelText: 'Cancelar',
+      },
+    });
+
+    const confirmed = await dialogRef.afterClosed().toPromise();
+    if (!confirmed) return;
+
+    const snackBarRef = this.snackBar.open(
+      'Reenviando correo...',
+      '',
+      {
+        duration: 0,
+        panelClass: ['info-snackbar'],
+        horizontalPosition: 'center',
+        verticalPosition: 'top',
+      }
+    );
+
+    try {
+      const result = await this.usersAccessService.resendAccreditationEmail(
+        userId
+      );
+
+      snackBarRef.dismiss();
+
+      if (result.success) {
+        const mensaje = result.hasPdf
+          ? 'Correo reenviado exitosamente con el PDF existente'
+          : 'PDF generado y correo enviado exitosamente';
+        this.snackBar.open(mensaje, 'Cerrar', {
+          duration: 5000,
+          panelClass: ['success-snackbar'],
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+        });
+      } else {
+        this.snackBar.open(
+          'Error al reenviar correo: ' + result.message,
+          'Cerrar',
+          {
+            duration: 7000,
+            panelClass: ['error-snackbar'],
+            horizontalPosition: 'center',
+            verticalPosition: 'top',
+          }
+        );
+      }
+    } catch (error: any) {
+      snackBarRef.dismiss();
+      console.error('Error al reenviar correo:', error);
+      this.snackBar.open(
+        'Error al reenviar correo: ' + (error.message || 'Error desconocido'),
+        'Cerrar',
+        {
+          duration: 7000,
+          panelClass: ['error-snackbar'],
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+        }
+      );
+    }
+  }
+}
+
+// Componente de diálogo de confirmación
+@Component({
+  selector: 'app-confirm-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule],
+  template: `
+    <div class="p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ data.title }}</h2>
+      <p class="text-gray-600 mb-6">{{ data.message }}</p>
+      <div class="flex justify-end gap-3">
+        <button
+          mat-stroked-button
+          (click)="onCancel()"
+          class="px-6"
+        >
+          {{ data.cancelText || 'Cancelar' }}
+        </button>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="onConfirm()"
+          class="px-6"
+          style="background-color: #007A53;"
+        >
+          {{ data.confirmText || 'Confirmar' }}
+        </button>
+      </div>
+    </div>
+  `,
+  styles: [`
+    ::ng-deep .mat-mdc-dialog-container {
+      border-radius: 12px !important;
+    }
+  `]
+})
+export class ConfirmDialogComponent {
+  constructor(
+    public dialogRef: MatDialogRef<ConfirmDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {}
+
+  onConfirm(): void {
+    this.dialogRef.close(true);
+  }
+
+  onCancel(): void {
+    this.dialogRef.close(false);
   }
 }
