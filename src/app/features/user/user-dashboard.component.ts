@@ -24,6 +24,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
 
 @Component({
   selector: 'app-user-dashboard',
@@ -257,6 +260,32 @@ import { UserFormEspecialComponent } from './user-formularioEspecial.component';
                     }
                   </td>
                 </ng-container>
+                <!-- Acciones (solo para hamco) -->
+              <ng-container matColumnDef="acciones">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let user">
+                  @if (isHamcoUser) {
+                    @if (!user.codigoPulsera || user.codigoPulsera === 'SIN_PULSERA_ASIGNADA') {
+                      <button
+                        mat-raised-button
+                        color="primary"
+                        (click)="asignarCodigoPulsera(user)"
+                        style="background-color: #007A53; color: white;"
+                        matTooltip="Asignar código de pulsera"
+                      >
+                        <mat-icon>qr_code</mat-icon>
+                        Asignar
+                      </button>
+                    } @else {
+                      <div class="flex flex-col items-start">
+                        <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                          {{ user.codigoPulsera }}
+                        </span>
+                      </div>
+                    }
+                  }
+                </td>
+              </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                 <tr
@@ -326,6 +355,8 @@ export class UserDashboardComponent implements OnInit {
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
   isHamcoUser = false;
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
 
   // ===== Filtros =====
   showFilters = false;
@@ -369,15 +400,14 @@ export class UserDashboardComponent implements OnInit {
     });
   }
 
-  displayedColumns: string[] = [
-    'nombre',
-    'email',
-    'empresa',
-    'funcion',
-    'estatus',
-    'fecha',
-    'pdf',
-  ];
+  // Modifica displayedColumns para que sea dinámico
+  get displayedColumns(): string[] {
+    const baseColumns = ['nombre', 'email', 'empresa', 'funcion', 'estatus', 'fecha', 'pdf'];
+    if (this.isHamcoUser) {
+      return [...baseColumns, 'acciones'];
+    }
+    return baseColumns;
+  }
 
   dataSource: any[] = []; // Placeholder vacÃ­o
 
@@ -391,16 +421,24 @@ export class UserDashboardComponent implements OnInit {
       const currentUser = this.authService.getCurrentUser();
       if (!currentUser?.email) return;
 
-      const users = await this.usersAccessService.getUsersByRegistrant(
-        currentUser.email
-      );
+      let users: UserAccess[] = [];
+
+      // HAMCO VE TODO
+      if (this.isHamcoUser) {
+        users = await this.usersAccessService.getUsers();
+      } else {
+        // 👤 USUARIOS NORMALES: solo los que registró
+        users = await this.usersAccessService.getUsersByRegistrant(
+          currentUser.email
+        );
+      }
 
       const mapped = users.map((user) => {
         const estatusNormalized = this.normalizeStatus(user.estatus);
         const pdfUrlResolved =
           user.pdfUrl ||
-          (user as { pdfURL?: string }).pdfURL ||
-          (user as { pdf_url?: string }).pdf_url ||
+          (user as any).pdfURL ||
+          (user as any).pdf_url ||
           '';
 
         return {
@@ -415,33 +453,74 @@ export class UserDashboardComponent implements OnInit {
         };
       });
 
+      // 🔹 datos base
       this.allUsers = mapped;
       this.filteredUsers = mapped;
       this.updatePagination();
 
-      // opciones únicas
+      // 🔹 filtros
       this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
 
-      this.totalUsuarios = users.length;
+      // 🔹 contadores
+      this.totalUsuarios = mapped.length;
       this.usuariosAprobados = mapped.filter(
         (u) => u.estatusNormalized === 'aprobado'
       ).length;
-      this.usuariosCanjeados = users.filter(
-        (u) => u.estatus === 'canjeado'
+      this.usuariosCanjeados = mapped.filter(
+        (u) => u.estatusNormalized === 'canjeado'
       ).length;
 
-      // Forzar detección de cambios para actualizar la vista inmediatamente
+      // 🔹 forzar refresco
       this.cdr.markForCheck();
       this.cdr.detectChanges();
 
-      console.log('✅ Usuarios cargados y vista actualizada:', users.length);
+      console.log(
+        `✅ Usuarios cargados (${this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'})`,
+        mapped.length
+      );
 
-      // Verificar si hay usuarios aprobados sin PDF y programar recargas
+      // 🔄 verificar PDFs pendientes
       this.checkForPendingPDFs(mapped);
     } catch (error) {
-      console.error('Error cargando usuarios', error);
+      console.error('❌ Error cargando usuarios', error);
     }
   }
+
+  // Añade este método para asignar código de pulsera
+  async asignarCodigoPulsera(user: any): Promise<void> {
+    const dialogRef = this.dialog.open(AsignarCodigoDialogComponent, {
+      width: '400px',
+      data: {
+        nombre: `${user.nombre} ${user.apellidoPaterno}`,
+        codigoActual: user.codigoPulsera || 'SIN_PULSERA_ASIGNADA'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result && result.codigoPulsera) {
+        try {
+          await this.usersAccessService.updateUser(user.id, {
+            codigoPulsera: result.codigoPulsera
+          });
+
+          this.snackBar.open('✅ Código asignado correctamente', 'Cerrar', {
+            duration: 3000,
+            panelClass: ['success-snackbar']
+          });
+
+          // Recargar usuarios para mostrar el cambio
+          await this.loadUsers();
+        } catch (error) {
+          console.error('Error al asignar código:', error);
+          this.snackBar.open('❌ Error al asignar código', 'Cerrar', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+        }
+      }
+    });
+  }
+
 
   /**
    * Verifica si hay usuarios aprobados sin PDF y programa recargas automáticas
