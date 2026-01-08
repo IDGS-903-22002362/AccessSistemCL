@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { Auth } from '@angular/fire/auth';
 import { AuthService } from '../services/auth.service';
 
-const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
+const SUPER_ADMIN_EMAIL = 'sistemascl@gmail.com';
 
 export const superAdminGuard: CanActivateFn = async (route, state) => {
   const auth = inject(Auth);

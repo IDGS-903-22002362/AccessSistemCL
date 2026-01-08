@@ -3,6 +3,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { adminGuard, roleGuard } from './core/guards/role.guard';
 import { superAdminGuard } from './core/guards/super-admin.guard';
 import { registranteGuard } from './core/guards/registrante.guard';
+import { analistaGuard } from './core/guards/analista.guard';
 
 export const routes: Routes = [
   {
@@ -77,6 +78,14 @@ export const routes: Routes = [
         pathMatch: 'full',
       },
     ],
+  },
+  {
+    path: 'reportes-analytics',
+    loadComponent: () =>
+      import('./features/analytics/reportes-analytics.component').then(
+        (m) => m.ReportesAnalyticsComponent
+      ),
+    canActivate: [authGuard, analistaGuard],
   },
   {
     path: '**',

@@ -248,7 +248,7 @@ export class LoginComponent {
         console.log('✅ Login exitoso en Firebase Auth');
 
         // Redirección especial para super admin
-        if (email === 'luisrosasbocanegra@gmail.com') {
+        if (email === 'sistemascl@gmail.com') {
           this.router.navigate(['/super-admin/users']);
           return;
         }
@@ -305,7 +305,13 @@ export class LoginComponent {
               const result = await this.router.navigate(['/user']);
               console.log('✅ Navegación completada:', result);
               break;
+            case 'Analista':
+              console.log('➡️ Navegando a /reportes-analytics');
+              await this.router.navigate(['/reportes-analytics']);
+              console.log('✅ Navegación completada a /reportes-analytics');
+              break;
             default:
+              console.error('❌ Rol no reconocido:', userRole.name);
               this.errorMessage =
                 'Rol no reconocido. Contacte al administrador.';
               this.loadingRole = false;

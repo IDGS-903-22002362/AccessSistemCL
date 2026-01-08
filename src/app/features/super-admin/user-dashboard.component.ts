@@ -24,11 +24,14 @@ import {
   UserAccess,
 } from '../../core/services/usersSolicitud.service';
 //import { UserJornadaComponent } from '../user/user-jornada.component';
-const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
+const SUPER_ADMIN_EMAIL = 'sistemascl@gmail.com';
 import { PartidosService } from '../../core/services/partidos.service';
+import {
+  JornadaActivaService,
+  JornadaActiva,
+} from '../../core/services/jornadas.service';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-
 
 @Component({
   selector: 'app-super-admin-reportes',
@@ -47,45 +50,90 @@ import html2canvas from 'html2canvas';
     HttpClientModule,
   ],
   template: `
-    <!-- Cuadros Dinámicos con Información de Filtros -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <!-- Card: Total de Resultados -->
-      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
-        <div class="text-sm font-medium text-gray-600 mb-1">
-          Total de Resultados
-        </div>
-        <div class="text-3xl font-bold text-[#007A53]">
-          {{ filteredSolicitudes.length }}
+    <!-- Mensaje cuando no hay jornada activa -->
+    <div
+      *ngIf="!jornadaActiva && !loading"
+      class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 mb-6 text-center"
+    >
+      <mat-icon class="text-yellow-600 text-5xl mb-2">warning</mat-icon>
+      <h3 class="text-xl font-semibold text-yellow-800 mb-2">
+        No hay jornada activa
+      </h3>
+      <p class="text-yellow-700">
+        No hay datos para mostrar. Por favor, active una jornada para ver las
+        estadísticas.
+      </p>
+    </div>
+
+    <!-- Cuadros Dinámicos con Conteo de Usuarios por Área (solo si hay jornada activa) -->
+    <div *ngIf="jornadaActiva && !loading" class="mb-6">
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-[#007A53]">
+              Jornada Activa: {{ jornadaActiva.jornada }}
+            </h3>
+            <p class="text-sm text-gray-600">
+              {{ jornadaActiva.equipo_local }} vs
+              {{ jornadaActiva.equipo_visitante }}
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ jornadaActiva.fecha }} - {{ jornadaActiva.hora }}
+            </p>
+          </div>
+          <div class="text-right">
+            <div class="text-sm text-gray-600">Total de usuarios</div>
+            <div class="text-3xl font-bold text-[#007A53]">
+              {{ getTotalUsuariosJornadaActiva() }}
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Card: Área Seleccionada -->
-      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
-        <div class="text-sm font-medium text-gray-600 mb-1">Área</div>
-        <div class="text-xl font-semibold text-[#007A53] truncate">
-          {{ filters.area ? areasMap.get(filters.area) || 'Todas' : 'Todas' }}
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">
+        Usuarios por Área
+      </h3>
+      <div
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      >
+        <div
+          *ngFor="let area of areasConConteo"
+          class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
+        >
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-gray-600 mb-1">
+                {{ area.nombre }}
+              </h4>
+              <div class="text-3xl font-bold text-[#007A53]">
+                {{ area.conteoUsuarios }}
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                {{
+                  area.conteoUsuarios === 1
+                    ? 'usuario asignado'
+                    : 'usuarios asignados'
+                }}
+              </p>
+            </div>
+            <mat-icon class="text-[#007A53] opacity-50">people</mat-icon>
+          </div>
         </div>
       </div>
 
-      <!-- Card: Jornada Seleccionada -->
-      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
-        <div class="text-sm font-medium text-gray-600 mb-1">Jornada</div>
-        <div class="text-xl font-semibold text-[#007A53]">
-          {{ selectedJornada !== '' ? 'Jornada ' + selectedJornada : 'Todas' }}
-        </div>
-      </div>
-
-      <!-- Card: Partido -->
-      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
-        <div class="text-sm font-medium text-gray-600 mb-1">Partido</div>
-        <div class="text-sm font-semibold text-[#007A53]">
-          {{ getPartidoByJornada(selectedJornada) }}
-        </div>
+      <div
+        *ngIf="areasConConteo.length === 0"
+        class="text-center py-8 text-gray-500"
+      >
+        <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
+        <p class="mt-2">
+          No hay usuarios asignados en ninguna área para esta jornada.
+        </p>
       </div>
     </div>
 
     <!-- Botón para Mostrar/Ocultar Filtros -->
-    <div class="mb-4">
+    <div class="mb-4" *ngIf="jornadaActiva">
       <button
         (click)="toggleFilters()"
         class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
@@ -98,7 +146,7 @@ import html2canvas from 'html2canvas';
     </div>
 
     <!-- Buscador -->
-    <div class="mb-4">
+    <div class="mb-4" *ngIf="jornadaActiva">
       <div class="relative">
         <mat-icon class="absolute left-3 top-3 text-gray-400">search</mat-icon>
         <input
@@ -112,7 +160,7 @@ import html2canvas from 'html2canvas';
     </div>
 
     <div
-      *ngIf="showFilters"
+      *ngIf="showFilters && jornadaActiva"
       class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
     >
       <!-- Panel de Filtros -->
@@ -208,17 +256,15 @@ import html2canvas from 'html2canvas';
       </p>
     </div>
 
-          <div
-            *ngIf="
-              !loading && hasPermissions && filteredSolicitudes.length === 0
-            "
-            class="text-center py-8"
-          >
-            <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
-            <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
-          </div>
+    <div
+      *ngIf="!loading && hasPermissions && filteredSolicitudes.length === 0"
+      class="text-center py-8"
+    >
+      <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
+      <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
+    </div>
 
-          <!-- Botón para exportar PDF (agregar cerca de los filtros) -->
+    <!-- Botón para exportar PDF (agregar cerca de los filtros) -->
     <div class="flex justify-between items-center mb-4">
       <h1 class="text-2xl font-bold text-[#007A53]">{{ headerTitle }}</h1>
       <button
@@ -232,116 +278,108 @@ import html2canvas from 'html2canvas';
       </button>
     </div>
 
-          <div
-            *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
-            id="pdfTable"
-            class="overflow-x-auto"
+    <div
+      *ngIf="!loading && hasPermissions && filteredSolicitudes.length > 0"
+      id="pdfTable"
+      class="overflow-x-auto"
+    >
+      <table class="w-full">
+        <thead class="bg-[#007A53] text-white">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Nombre
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Email
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Área
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Función
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Teléfono
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+              Estado
+            </th>
+            <th>Jornada</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr
+            *ngFor="let solicitud of pagedSolicitudes"
+            class="hover:bg-[#007A53] hover:bg-opacity-5"
+            [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
+            [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
           >
-            <table class="w-full">
-              <thead class="bg-[#007A53] text-white">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Nombre
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Email
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Área
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Función
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Teléfono
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-                    Estado
-                  </th>
-                  <th>
-                    Jornada
-                  </th>
-                  
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr
-                  *ngFor="let solicitud of pagedSolicitudes"
-                  class="hover:bg-[#007A53] hover:bg-opacity-5"
-                  [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
-                  [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
-                >
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
-                    </div>
-                    <div class="text-sm text-gray-500">
-                      {{ solicitud.apellidoMaterno }}
-                    </div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ solicitud.email }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{
-                      funcionesMap.get(solicitud.funcion) || solicitud.funcion
-                    }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ solicitud.telefono }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      [ngClass]="{
-                        'bg-yellow-100 text-yellow-800':
-                          solicitud.estatus === 'pendiente',
-                        'bg-green-100 text-green-800':
-                          solicitud.estatus === 'aprobado',
-                        'bg-red-100 text-red-800':
-                          solicitud.estatus === 'canjeado'
-                      }"
-                    >
-                      {{ solicitud.estatus }}
-                    </span>
-                  </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {{ solicitud.jornada || 'No asignada' }}
-                        </td>
-                </tr>
-              </tbody>
-            </table>
-            <div
-  *ngIf="filteredSolicitudes.length > pageSize"
-  class="flex justify-center items-center gap-4 mt-4"
->
-  <button
-    (click)="currentPage = currentPage - 1; updatePagination()"
-    [disabled]="currentPage === 1"
-    class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-  >
-    Anterior
-  </button>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">
+                {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
+              </div>
+              <div class="text-sm text-gray-500">
+                {{ solicitud.apellidoMaterno }}
+              </div>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.email }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ funcionesMap.get(solicitud.funcion) || solicitud.funcion }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.telefono }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span
+                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                [ngClass]="{
+                  'bg-yellow-100 text-yellow-800':
+                    solicitud.estatus === 'pendiente',
+                  'bg-green-100 text-green-800':
+                    solicitud.estatus === 'aprobado',
+                  'bg-red-100 text-red-800': solicitud.estatus === 'canjeado'
+                }"
+              >
+                {{ solicitud.estatus }}
+              </span>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ solicitud.jornada || 'No asignada' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div
+        *ngIf="filteredSolicitudes.length > pageSize"
+        class="flex justify-center items-center gap-4 mt-4"
+      >
+        <button
+          (click)="currentPage = currentPage - 1; updatePagination()"
+          [disabled]="currentPage === 1"
+          class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Anterior
+        </button>
 
-  <span class="text-sm font-medium">
-    Página {{ currentPage }} de {{ totalPages }}
-  </span>
+        <span class="text-sm font-medium">
+          Página {{ currentPage }} de {{ totalPages }}
+        </span>
 
-  <button
-    (click)="currentPage = currentPage + 1; updatePagination()"
-    [disabled]="currentPage === totalPages"
-    class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-  >
-    Siguiente
-  </button>
-</div>
-
-          </div>
-
-        `,
+        <button
+          (click)="currentPage = currentPage + 1; updatePagination()"
+          [disabled]="currentPage === totalPages"
+          class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  `,
   styles: [],
 })
 export class SuperAdminDashboard implements OnInit {
@@ -353,10 +391,16 @@ export class SuperAdminDashboard implements OnInit {
   private usersAccessService = inject(UsersAccesService);
   private router = inject(Router);
   private partidosService = inject(PartidosService);
+  private jornadaActivaService = inject(JornadaActivaService);
   // Nueva propiedad para controlar estado de exportación
   exportingPDF = false;
   searchTerm: string = ''; // ✅ Agrega esto
-
+  jornadaActiva?: JornadaActiva; // Jornada activa actual
+  areasConConteo: Array<{
+    id: string;
+    nombre: string;
+    conteoUsuarios: number;
+  }> = [];
 
   partidos: any[] = [];
   selectedPartido = '';
@@ -372,7 +416,9 @@ export class SuperAdminDashboard implements OnInit {
   pagedSolicitudes: UserAccess[] = [];
 
   updatePagination(): void {
-    this.totalPages = Math.ceil(this.filteredSolicitudes.length / this.pageSize);
+    this.totalPages = Math.ceil(
+      this.filteredSolicitudes.length / this.pageSize
+    );
     if (this.currentPage > this.totalPages) {
       this.currentPage = 1;
     }
@@ -412,7 +458,15 @@ export class SuperAdminDashboard implements OnInit {
       thead.style.color = 'white';
 
       const headerRow = document.createElement('tr');
-      ['Nombre', 'Email', 'Área', 'Función', 'Teléfono', 'Estado', 'Jornada'].forEach(headerText => {
+      [
+        'Nombre',
+        'Email',
+        'Área',
+        'Función',
+        'Teléfono',
+        'Estado',
+        'Jornada',
+      ].forEach((headerText) => {
         const th = document.createElement('th');
         th.style.padding = '8px';
         th.style.textAlign = 'left';
@@ -435,7 +489,9 @@ export class SuperAdminDashboard implements OnInit {
         const tdNombre = document.createElement('td');
         tdNombre.style.padding = '8px';
         tdNombre.style.border = '1px solid #ddd';
-        tdNombre.textContent = `${solicitud.nombre} ${solicitud.apellidoPaterno} ${solicitud.apellidoMaterno || ''}`;
+        tdNombre.textContent = `${solicitud.nombre} ${
+          solicitud.apellidoPaterno
+        } ${solicitud.apellidoMaterno || ''}`;
         row.appendChild(tdNombre);
 
         // Email
@@ -449,14 +505,16 @@ export class SuperAdminDashboard implements OnInit {
         const tdArea = document.createElement('td');
         tdArea.style.padding = '8px';
         tdArea.style.border = '1px solid #ddd';
-        tdArea.textContent = this.areasMap.get(solicitud.areaId) || solicitud.areaId || '';
+        tdArea.textContent =
+          this.areasMap.get(solicitud.areaId) || solicitud.areaId || '';
         row.appendChild(tdArea);
 
         // Función
         const tdFuncion = document.createElement('td');
         tdFuncion.style.padding = '8px';
         tdFuncion.style.border = '1px solid #ddd';
-        tdFuncion.textContent = this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '';
+        tdFuncion.textContent =
+          this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '';
         row.appendChild(tdFuncion);
 
         // Teléfono
@@ -479,7 +537,9 @@ export class SuperAdminDashboard implements OnInit {
         tdJornada.style.padding = '8px';
         tdJornada.style.border = '1px solid #ddd';
         // Convertir explícitamente a string
-        tdJornada.textContent = solicitud.jornada ? String(solicitud.jornada) : 'No asignada';
+        tdJornada.textContent = solicitud.jornada
+          ? String(solicitud.jornada)
+          : 'No asignada';
         row.appendChild(tdJornada);
 
         tbody.appendChild(row);
@@ -534,7 +594,11 @@ export class SuperAdminDashboard implements OnInit {
       }
 
       if (this.filters.area) {
-        pdf.text(`Área: ${this.areasMap.get(this.filters.area) || this.filters.area}`, 10, yPosition);
+        pdf.text(
+          `Área: ${this.areasMap.get(this.filters.area) || this.filters.area}`,
+          10,
+          yPosition
+        );
         yPosition += 5;
       }
 
@@ -544,7 +608,13 @@ export class SuperAdminDashboard implements OnInit {
       }
 
       if (this.filters.funcion) {
-        pdf.text(`Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion}`, 10, yPosition);
+        pdf.text(
+          `Función: ${
+            this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
+          }`,
+          10,
+          yPosition
+        );
         yPosition += 5;
       }
 
@@ -554,7 +624,11 @@ export class SuperAdminDashboard implements OnInit {
       }
 
       // Agregar información general
-      pdf.text(`Total de registros: ${this.filteredSolicitudes.length}`, 10, yPosition + 5);
+      pdf.text(
+        `Total de registros: ${this.filteredSolicitudes.length}`,
+        10,
+        yPosition + 5
+      );
       yPosition += 10;
 
       // Agregar la imagen de la tabla
@@ -572,7 +646,7 @@ export class SuperAdminDashboard implements OnInit {
 
         while (heightLeft > 0) {
           pdf.addImage(imgData, 'PNG', 10, position, imgWidth - 20, imgHeight);
-          heightLeft -= (pageHeight - position);
+          heightLeft -= pageHeight - position;
 
           if (heightLeft > 0) {
             pdf.addPage();
@@ -587,12 +661,13 @@ export class SuperAdminDashboard implements OnInit {
 
       // Guardar el PDF
       const fecha = new Date().toISOString().split('T')[0];
-      const hora = new Date().toLocaleTimeString('es-MX', { hour12: false }).replace(/:/g, '-');
+      const hora = new Date()
+        .toLocaleTimeString('es-MX', { hour12: false })
+        .replace(/:/g, '-');
       const fileName = `reporte_solicitudes_${fecha}_${hora}.pdf`;
       pdf.save(fileName);
 
       console.log('✅ PDF exportado exitosamente con todos los registros');
-
     } catch (error) {
       console.error('❌ Error al exportar PDF:', error);
       alert('Error al generar el PDF. Por favor, intenta nuevamente.');
@@ -624,18 +699,18 @@ export class SuperAdminDashboard implements OnInit {
 
     // Encabezados de tabla
     const headers = [
-      ['Nombre', 'Email', 'Área', 'Función', 'Teléfono', 'Estado', 'Jornada']
+      ['Nombre', 'Email', 'Área', 'Función', 'Teléfono', 'Estado', 'Jornada'],
     ];
 
     // Datos de la tabla
-    const data = this.filteredSolicitudes.map(solicitud => [
+    const data = this.filteredSolicitudes.map((solicitud) => [
       `${solicitud.nombre} ${solicitud.apellidoPaterno}`,
       solicitud.email || '',
       this.areasMap.get(solicitud.areaId) || solicitud.areaId || '',
       this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '',
       solicitud.telefono || '',
       solicitud.estatus || '',
-      solicitud.jornada || 'No asignada'
+      solicitud.jornada || 'No asignada',
     ]);
 
     // Configurar tabla
@@ -649,13 +724,13 @@ export class SuperAdminDashboard implements OnInit {
       alternateRowStyles: { fillColor: [240, 240, 240] },
       columnStyles: {
         0: { cellWidth: availableWidth * 0.15 }, // Nombre
-        1: { cellWidth: availableWidth * 0.20 }, // Email
+        1: { cellWidth: availableWidth * 0.2 }, // Email
         2: { cellWidth: availableWidth * 0.15 }, // Área
         3: { cellWidth: availableWidth * 0.15 }, // Función
-        4: { cellWidth: availableWidth * 0.10 }, // Teléfono
-        5: { cellWidth: availableWidth * 0.10 }, // Estado
-        6: { cellWidth: availableWidth * 0.10 }  // Jornada
-      }
+        4: { cellWidth: availableWidth * 0.1 }, // Teléfono
+        5: { cellWidth: availableWidth * 0.1 }, // Estado
+        6: { cellWidth: availableWidth * 0.1 }, // Jornada
+      },
     });
 
     // Pie de página
@@ -671,13 +746,10 @@ export class SuperAdminDashboard implements OnInit {
     }
 
     // Guardar
-    pdf.save(`reporte_solicitudes_${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(
+      `reporte_solicitudes_${new Date().toISOString().split('T')[0]}.pdf`
+    );
   }
-
-
-
-
-
 
   // Estado del componente
   loading = false;
@@ -758,9 +830,85 @@ export class SuperAdminDashboard implements OnInit {
     this.showFilters = !this.showFilters;
   }
 
+  /**
+   * Cargar la jornada activa
+   */
+  loadJornadaActiva(): void {
+    this.jornadaActivaService.getJornadasActivas$().subscribe({
+      next: (jornadas: JornadaActiva[]) => {
+        this.jornadaActiva = jornadas.length ? jornadas[0] : undefined;
+
+        if (!this.jornadaActiva) {
+          console.warn('⚠️ No hay jornada activa');
+        } else {
+          console.log('✅ Jornada activa cargada:', this.jornadaActiva);
+          // Recalcular áreas con conteo cuando cambia la jornada
+          this.calculateAreasConteo();
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error cargando jornada activa:', error);
+        this.jornadaActiva = undefined;
+      },
+    });
+  }
+
+  /**
+   * Calcular el conteo de usuarios por área para la jornada activa
+   */
+  calculateAreasConteo(): void {
+    if (!this.jornadaActiva) {
+      this.areasConConteo = [];
+      return;
+    }
+
+    // Filtrar usuarios de la jornada activa
+    const usuariosJornadaActiva = this.allSolicitudes.filter(
+      (s) => s.jornada === this.jornadaActiva?.jornada
+    );
+
+    // Crear un mapa para contar usuarios por área
+    const conteoMap = new Map<string, number>();
+
+    usuariosJornadaActiva.forEach((solicitud) => {
+      if (solicitud.areaId) {
+        const count = conteoMap.get(solicitud.areaId) || 0;
+        conteoMap.set(solicitud.areaId, count + 1);
+      }
+    });
+
+    // Crear array con todas las áreas y sus conteos
+    const todasLasAreas: Area[] = [];
+    this.areasMap.forEach((nombre, id) => {
+      todasLasAreas.push({ id, nombre } as Area);
+    });
+
+    this.areasConConteo = todasLasAreas
+      .map((area) => ({
+        id: area.id || '',
+        nombre: area.nombre,
+        conteoUsuarios: conteoMap.get(area.id || '') || 0,
+      }))
+      .sort((a, b) => b.conteoUsuarios - a.conteoUsuarios); // Ordenar por mayor conteo
+
+    console.log('📊 Conteo de usuarios por área:', this.areasConConteo);
+  }
+
+  /**
+   * Obtener el total de usuarios de la jornada activa
+   */
+  getTotalUsuariosJornadaActiva(): number {
+    if (!this.jornadaActiva) return 0;
+
+    return this.allSolicitudes.filter(
+      (s) => s.jornada === this.jornadaActiva?.jornada
+    ).length;
+  }
+
   async ngOnInit() {
     console.log('🚀 Iniciando AdminArea Dashboard...');
     this.loadPartidos();
+    this.loadJornadaActiva(); // Cargar jornada activa
     this.loading = true;
     try {
       await this.loadFunciones();
@@ -768,6 +916,7 @@ export class SuperAdminDashboard implements OnInit {
       await this.loadAdminData();
       if (this.hasPermissions) {
         await this.loadSolicitudes();
+        this.calculateAreasConteo(); // Calcular conteo de usuarios por área
       } else {
         console.warn('⚠️ No se cargarán solicitudes - sin permisos');
         this.loading = false;
@@ -934,7 +1083,6 @@ export class SuperAdminDashboard implements OnInit {
       this.extractFilterOptions();
       this.currentPage = 1;
       this.updatePagination(); // 🔥 ESTO FALTABA
-
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       this.filteredSolicitudes = [];
@@ -977,8 +1125,9 @@ export class SuperAdminDashboard implements OnInit {
       const searchLower = this.searchTerm.toLowerCase().trim();
       filtered = filtered.filter((s) => {
         const id = s.id?.toLowerCase() || '';
-        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${s.apellidoMaterno || ''
-          }`.toLowerCase();
+        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${
+          s.apellidoMaterno || ''
+        }`.toLowerCase();
         const email = s.email?.toLowerCase() || '';
 
         return (
@@ -1014,7 +1163,7 @@ export class SuperAdminDashboard implements OnInit {
     this.selectAll = false;
     this.currentPage = 1;
     this.updatePagination();
-
+    this.calculateAreasConteo(); // Recalcular conteo de áreas después de filtrar
   }
 
   /**

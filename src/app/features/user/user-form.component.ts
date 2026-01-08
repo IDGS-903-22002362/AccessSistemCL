@@ -49,7 +49,7 @@ import { take } from 'rxjs/operators';
     MatProgressBarModule,
   ],
   template: `
-    <div class="min-h-screen bg-white py-8 px-4 sm:px-6 lg:px-8">
+    <div class="min-h-screen bg-[#F7FBF9] py-8 px-4 sm:px-6 lg:px-8">
       <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="mb-8 bg-[#007A53] p-6 rounded-2xl shadow-sm">
@@ -74,6 +74,32 @@ import { take } from 'rxjs/operators';
           <p class="text-white/80 mt-2">
             Registro de solicitud de accesos para usuarios.
           </p>
+          <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="step-card">
+              <p class="step-title">Paso 1</p>
+              <p class="step-label">Empresa</p>
+              <p class="step-help" *ngIf="canSelectEmpresa; else empresaAuto">
+                Selecciona la empresa para esta solicitud.
+              </p>
+              <ng-template #empresaAuto>
+                <p class="step-help">La empresa se asigna automaticamente.</p>
+              </ng-template>
+            </div>
+            <div class="step-card">
+              <p class="step-title">Paso 2</p>
+              <p class="step-label">Area</p>
+              <p class="step-help">
+                Define el area para aplicar los permisos correctos.
+              </p>
+            </div>
+            <div class="step-card">
+              <p class="step-title">Paso 3</p>
+              <p class="step-label">Registrar</p>
+              <p class="step-help">
+                Importa un archivo o agrega usuarios manualmente.
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- Notificaciones -->
@@ -115,9 +141,10 @@ import { take } from 'rxjs/operators';
               Empresa
             </mat-card-title>
           </div>
-          <br />
-
-          <mat-card-content class="p-6">
+          <mat-card-content class="p-6 space-y-4">
+            <p class="text-sm text-gray-600">
+              Este paso solo aplica si tu rol permite elegir empresa.
+            </p>
             <form [formGroup]="empresaForm">
               <mat-form-field appearance="fill" class="w-full">
                 <mat-label>Seleccionar Empresa</mat-label>
@@ -144,13 +171,11 @@ import { take } from 'rxjs/operators';
               Pulsera
             </mat-card-title>
           </div>
-          <br />
           <mat-card-content class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <p class="text-gray-700 mb-4">
-                  Seleccione el área organizacional para la cual desea registrar
-                  usuarios:
+                  Seleccione el area organizacional para registrar usuarios.
                 </p>
                 <form [formGroup]="areaForm">
                   <mat-form-field appearance="fill" class="w-full">
@@ -180,37 +205,23 @@ import { take } from 'rxjs/operators';
                 </form>
               </div>
 
-              <div class="bg-white border border-[#E3EFE9] rounded-xl p-5">
+              <div class="bg-[#F9FDFA] border border-[#E3EFE9] rounded-xl p-5">
                 <h3 class="font-semibold text-[#007A53] mb-3 flex items-center">
                   <mat-icon class="mr-2">lightbulb</mat-icon>
-                  Información Importante
+                  Informacion importante
                 </h3>
                 <ul class="space-y-2 text-sm text-gray-700">
                   <li class="flex items-start">
                     <mat-icon class="text-[#007A53] mr-2 text-sm"
                       >check_circle</mat-icon
                     >
-                    <span
-                      >Puede registrar usuarios individualmente o mediante
-                      archivo CSV</span
-                    >
+                    <span>Registra usuarios manualmente o por archivo.</span>
                   </li>
                   <li class="flex items-start">
                     <mat-icon class="text-[#007A53] mr-2 text-sm"
                       >check_circle</mat-icon
                     >
-                    <span
-                      >Todos los usuarios son validados automaticamente</span
-                    >
-                  </li>
-                  <li class="flex items-start">
-                    <mat-icon class="text-[#007A53] mr-2 text-sm"
-                      >check_circle</mat-icon
-                    >
-                    <span
-                      >Los datos se guardarán automáticamente en el
-                      sistema</span
-                    >
+                    <span>Las solicitudes se validan automaticamente.</span>
                   </li>
                 </ul>
               </div>
@@ -232,101 +243,100 @@ import { take } from 'rxjs/operators';
               </div>
             </mat-card-title>
           </div>
-          <mat-card-content class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div class="space-y-4">
-                <div class="flex items-center space-x-4">
-                  <button
-                    mat-raised-button
-                    color="primary"
-                    class="!bg-[#007A53] hover:!bg-[#006B49] !text-white !font-medium !px-6 !py-3 !rounded-lg !shadow-md transition-all duration-200"
-                    (click)="downloadTemplate()"
-                  >
-                    <mat-icon class="mr-2">download_for_offline</mat-icon>
-                    Descargar Plantilla
-                  </button>
-                  <div class="text-sm text-gray-600">
-                    <p class="font-medium">Plantilla XLSX</p>
-                    <p class="text-xs">Formato predefinido</p>
-                  </div>
-                </div>
-
-                <div class="flex items-center space-x-4">
-                  <button
-                    mat-stroked-button
-                    color="primary"
-                    class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6] !font-medium !px-6 !py-3 !rounded-lg transition-all duration-200"
-                    (click)="fileInput.click()"
-                    [disabled]="isParsing"
-                  >
-                    <mat-icon class="mr-2" [class.animate-spin]="isParsing">{{
-                      isParsing ? 'autorenew' : 'upload_file'
-                    }}</mat-icon>
-                    {{ isParsing ? 'Procesando' : 'Seleccionar Archivo' }}
-                  </button>
-                  <input
-                    #fileInput
-                    type="file"
-                    accept=".csv,.xlsx"
-                    hidden
-                    (change)="onFileSelected($event)"
-                  />
-
-                  <div class="text-sm text-gray-600 flex-1">
-                    <p class="font-medium">Subir XLSX</p>
-                    <p class="text-xs">Máx. 5MB, formato .XLSX</p>
-                  </div>
-                </div>
+          <mat-card-content class="p-6 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="action-tile">
+                <p class="action-title">1. Descarga la plantilla</p>
+                <p class="action-help">
+                  Usa el formato oficial para evitar errores.
+                </p>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  class="!bg-[#007A53] hover:!bg-[#006B49] !text-white !font-medium !px-6 !py-3 !rounded-lg !shadow-md transition-all duration-200"
+                  (click)="downloadTemplate()"
+                >
+                  <mat-icon class="mr-2">download_for_offline</mat-icon>
+                  Descargar Plantilla
+                </button>
               </div>
 
-              <div class="bg-white border border-gray-200 rounded-xl p-5">
-                <div *ngIf="selectedFileName; else noFile" class="space-y-3">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                      <mat-icon class="text-[#007A53] mr-3"
-                        >description</mat-icon
-                      >
-                      <div>
-                        <p class="font-medium text-gray-800">
-                          {{ selectedFileName }}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                          Archivo cargado exitosamente
-                        </p>
-                      </div>
+              <div class="action-tile">
+                <p class="action-title">2. Sube el archivo</p>
+                <p class="action-help">Max 5MB, formato .XLSX o .CSV.</p>
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6] !font-medium !px-6 !py-3 !rounded-lg transition-all duration-200"
+                  (click)="fileInput.click()"
+                  [disabled]="isParsing"
+                >
+                  <mat-icon class="mr-2" [class.animate-spin]="isParsing">{{
+                    isParsing ? 'autorenew' : 'upload_file'
+                  }}</mat-icon>
+                  {{ isParsing ? 'Procesando' : 'Seleccionar Archivo' }}
+                </button>
+                <input
+                  #fileInput
+                  type="file"
+                  accept=".csv,.xlsx"
+                  hidden
+                  (change)="onFileSelected($event)"
+                />
+              </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5">
+              <div *ngIf="selectedFileName; else noFile" class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <mat-icon class="text-[#007A53] mr-3">description</mat-icon>
+                    <div>
+                      <p class="font-medium text-gray-800">
+                        {{ selectedFileName }}
+                      </p>
+                      <p class="text-xs text-gray-500">
+                        Archivo cargado exitosamente
+                      </p>
                     </div>
-                    <mat-icon class="text-[#007A53]">check_circle</mat-icon>
                   </div>
-                  <div class="flex items-center text-sm text-gray-600">
-                    <mat-icon class="text-sm mr-2">schedule</mat-icon>
-                    <span>Listo para procesar</span>
-                  </div>
-                  <div
-                    *ngIf="isParsing"
-                    class="flex items-center text-sm text-[#007A53]"
-                  >
-                    <mat-icon class="text-sm mr-2 animate-spin"
-                      >autorenew</mat-icon
-                    >
-                    <span>Validando archivo...</span>
-                  </div>
+                  <mat-icon class="text-[#007A53]">check_circle</mat-icon>
                 </div>
-                <ng-template #noFile>
-                  <div class="text-center py-4">
-                    <mat-icon class="text-gray-400 text-4xl mb-3"
-                      >folder_open</mat-icon
-                    >
-                    <p class="text-gray-500">No hay archivo seleccionado</p>
-                    <p class="text-xs text-gray-400 mt-1">
-                      Suba un archivo XLSX para continuar
-                    </p>
-                  </div>
-                </ng-template>
+                <div class="flex items-center text-sm text-gray-600">
+                  <mat-icon class="text-sm mr-2">schedule</mat-icon>
+                  <span>Listo para procesar</span>
+                </div>
+                <div
+                  *ngIf="isParsing"
+                  class="flex items-center text-sm text-[#007A53]"
+                >
+                  <mat-icon class="text-sm mr-2 animate-spin"
+                    >autorenew</mat-icon
+                  >
+                  <span>Validando archivo...</span>
+                </div>
               </div>
+              <ng-template #noFile>
+                <div class="text-center py-4">
+                  <mat-icon class="text-gray-400 text-4xl mb-3"
+                    >folder_open</mat-icon
+                  >
+                  <p class="text-gray-500">No hay archivo seleccionado</p>
+                  <p class="text-xs text-gray-400 mt-1">
+                    Sube un archivo para continuar
+                  </p>
+                </div>
+              </ng-template>
             </div>
           </mat-card-content>
         </mat-card>
-        <div class="flex justify-center mb-6">
+        <div class="manual-toggle mb-6">
+          <div>
+            <p class="text-gray-800 font-semibold">Registro manual</p>
+            <p class="text-sm text-gray-500">
+              Ideal para pocos usuarios o ajustes rapidos.
+            </p>
+          </div>
           <button
             mat-raised-button
             color="accent"
@@ -355,8 +365,10 @@ import { take } from 'rxjs/operators';
               Registro Manual
             </mat-card-title>
           </div>
-          <br />
           <mat-card-content class="p-6">
+            <p class="text-sm text-gray-600 mb-6">
+              Completa los campos requeridos y agrega el usuario a la lista.
+            </p>
             <form
               [formGroup]="manualForm"
               class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -663,14 +675,6 @@ import { take } from 'rxjs/operators';
                 ></tr>
               </table>
             </div>
-
-            <div *ngIf="previewUsers.length === 0" class="text-center py-12">
-              <mat-icon class="text-gray-300 text-5xl mb-4">group_off</mat-icon>
-              <p class="text-gray-500">No hay usuarios en la lista</p>
-              <p class="text-sm text-gray-400 mt-1">
-                Agregue usuarios mediante el formulario o importación CSV
-              </p>
-            </div>
           </mat-card-content>
         </mat-card>
 
@@ -683,16 +687,24 @@ import { take } from 'rxjs/operators';
             </h3>
             <p class="text-gray-500 mb-6">
               Comience agregando usuarios mediante el formulario manual o
-              importando un archivo CSV.
+              importando un archivo XLSX.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 mat-stroked-button
-                color="accent"
-                class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6]"
+                class="!border-[#007A53] !text-[#007A53] hover:!bg-[#F3FAF6] !rounded-lg"
+                (click)="fileInput.click()"
               >
-                <mat-icon class="mr-2">description</mat-icon>
-                Ver Documentación
+                <mat-icon class="mr-2">upload_file</mat-icon>
+                Subir archivo
+              </button>
+              <button
+                mat-raised-button
+                class="!bg-[#007A53] !text-white !rounded-lg hover:!bg-[#006B49]"
+                (click)="showManualForm = true"
+              >
+                <mat-icon class="mr-2">person_add</mat-icon>
+                Registro manual
               </button>
             </div>
           </div>
@@ -787,6 +799,75 @@ import { take } from 'rxjs/operators';
           transform: translateY(0);
         }
       }
+
+      .step-card {
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        padding: 12px 14px;
+        color: #ecfdf3;
+      }
+
+      .step-title {
+        font-size: 0.75rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+      }
+
+      .step-label {
+        font-weight: 700;
+        font-size: 1rem;
+        margin: 0;
+      }
+
+      .step-help {
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+        color: rgba(236, 253, 243, 0.85);
+      }
+
+      .action-tile {
+        border: 1px solid #e5efe9;
+        border-radius: 16px;
+        padding: 20px;
+        background: #f9fdfb;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .action-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+      }
+
+      .action-help {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin: 0;
+      }
+
+      .manual-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: #ffffff;
+        border: 1px solid #e5efe9;
+        border-radius: 16px;
+        padding: 16px 20px;
+        box-shadow: 0 14px 30px -24px rgba(15, 23, 42, 0.35);
+      }
+
+      @media (max-width: 640px) {
+        .manual-toggle {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+
 
       ::ng-deep
         .mat-form-field-appearance-outline

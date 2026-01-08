@@ -5,12 +5,10 @@ import { UsersService } from '../services/users.service';
 import { RolesService } from '../services/roles.service';
 import { AuthService } from '../services/auth.service';
 
-const SUPER_ADMIN_EMAIL = 'sistemascl@gmail.com';
-
 /**
- * Guard para rutas exclusivas de registrantes
+ * Guard para rutas exclusivas de analistas
  */
-export const registranteGuard: CanActivateFn = async (route, state) => {
+export const analistaGuard: CanActivateFn = async (route, state) => {
   const auth = inject(Auth);
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -18,30 +16,25 @@ export const registranteGuard: CanActivateFn = async (route, state) => {
   const rolesService = inject(RolesService);
 
   // Esperar a que Firebase verifique la sesión
-  console.log('⏳ Registrante Guard - Esperando Firebase...');
+  console.log('⏳ Analista Guard - Esperando Firebase...');
   await authService.waitForAuthReady();
-  console.log('✅ Registrante Guard - Firebase listo');
+  console.log('✅ Analista Guard - Firebase listo');
 
   const user = auth.currentUser;
 
   if (!user || !user.email) {
-    console.log('🚫 Registrante Guard - No hay usuario');
+    console.log('🚫 Analista Guard - No hay usuario');
     router.navigate(['/login']);
     return false;
   }
 
-  console.log('👤 Registrante Guard - Usuario:', user.email);
-
-  // Super admin no accede a rutas de usuario
-  if (user.email === SUPER_ADMIN_EMAIL) {
-    router.navigate(['/super-admin/users']);
-    return false;
-  }
+  console.log('👤 Analista Guard - Usuario:', user.email);
 
   try {
     const userData = await usersService.getUserByEmail(user.email);
 
     if (!userData || !userData.role) {
+      console.log('❌ Analista Guard - Usuario sin rol');
       router.navigate(['/login']);
       return false;
     }
@@ -49,24 +42,29 @@ export const registranteGuard: CanActivateFn = async (route, state) => {
     const roles = await rolesService.getRoles();
     const userRole = roles.find((r) => r.id === userData.role);
 
-    if (
-      userRole?.name === 'Registrante' ||
-      userRole?.name === 'AdminArea' ||
-      userRole?.name === 'AdminEspecial'
-    ) {
+    console.log('🔍 Analista Guard - Rol del usuario:', userRole?.name);
+
+    // Solo permitir acceso a usuarios con rol "Analista"
+    if (userRole?.name === 'Analista') {
+      console.log('✅ Analista Guard - Acceso permitido');
       return true;
     }
 
     // Redirigir según rol
-    if (userRole?.name === 'AdminArea') {
+    console.log('❌ Analista Guard - Acceso denegado, redirigiendo...');
+    if (userRole?.name === 'SuperAdmin') {
+      router.navigate(['/super-admin/users']);
+    } else if (userRole?.name === 'AdminArea') {
       router.navigate(['/admin-area']);
+    } else if (userRole?.name === 'Registrante') {
+      router.navigate(['/user']);
     } else {
       router.navigate(['/login']);
     }
 
     return false;
   } catch (error) {
-    console.error('Error en registranteGuard:', error);
+    console.error('Error en analistaGuard:', error);
     router.navigate(['/login']);
     return false;
   }

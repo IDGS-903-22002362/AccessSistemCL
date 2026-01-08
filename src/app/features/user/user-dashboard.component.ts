@@ -430,10 +430,37 @@ export class UserDashboardComponent implements OnInit {
         (u) => u.estatus === 'canjeado'
       ).length;
 
-      // Forzar detección de cambios para actualizar la vista
+      // Forzar detección de cambios para actualizar la vista inmediatamente
+      this.cdr.markForCheck();
       this.cdr.detectChanges();
+
+      console.log('✅ Usuarios cargados y vista actualizada:', users.length);
+
+      // Verificar si hay usuarios aprobados sin PDF y programar recargas
+      this.checkForPendingPDFs(mapped);
     } catch (error) {
       console.error('Error cargando usuarios', error);
+    }
+  }
+
+  /**
+   * Verifica si hay usuarios aprobados sin PDF y programa recargas automáticas
+   */
+  private checkForPendingPDFs(users: any[]): void {
+    const usuariosSinPDF = users.filter(
+      (u) => u.estatusNormalized === 'aprobado' && !u.pdfUrlResolved
+    );
+
+    if (usuariosSinPDF.length > 0) {
+      console.log(
+        `⏳ Hay ${usuariosSinPDF.length} usuarios aprobados esperando PDF...`
+      );
+
+      // Programar recarga en 3 segundos
+      setTimeout(() => {
+        console.log('🔄 Recargando para verificar PDFs generados...');
+        this.loadUsers();
+      }, 3000);
     }
   }
 
@@ -520,8 +547,14 @@ export class UserDashboardComponent implements OnInit {
     await this.loadUsers();
 
     // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO (tiempo real)
-    this.usersAccessService.userCreated$.subscribe(() => {
-      this.loadUsers();
+    this.usersAccessService.userCreated$.subscribe(async () => {
+      console.log('🔔 Evento userCreated recibido, recargando usuarios...');
+
+      // Esperar un momento para que la Cloud Function genere el PDF
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      await this.loadUsers();
+      console.log('✅ Usuarios recargados después de creación');
     });
 
     // Suscribirse a eventos de navegación para recargar datos

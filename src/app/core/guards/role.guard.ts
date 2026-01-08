@@ -5,7 +5,7 @@ import { UsersService } from '../services/users.service';
 import { RolesService } from '../services/roles.service';
 import { AuthService } from '../services/auth.service';
 
-const SUPER_ADMIN_EMAIL = 'luisrosasbocanegra@gmail.com';
+const SUPER_ADMIN_EMAIL = 'sistemascl@gmail.com';
 
 /**
  * Guard para proteger rutas según roles permitidos
