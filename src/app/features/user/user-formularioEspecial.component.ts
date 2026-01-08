@@ -26,6 +26,13 @@ import { UsersService } from '../../core/services/users.service';
 import { Empresa } from '../../core/services/empresas.service';
 import { EmpresasService } from '../../core/services/empresas.service';
 import * as XLSX from 'xlsx';
+import {
+  JornadaActivaService,
+  JornadaActiva,
+} from '../../core/services/jornadas.service';
+import { take } from 'rxjs/operators';
+
+
 
 
 @Component({
@@ -427,6 +434,37 @@ export class UserFormEspecialComponent implements OnInit {
   private empresasService = inject(EmpresasService);
   private usersService = inject(UsersService);
   isHamcoUser = false;
+  private jornadaService = inject(JornadaActivaService);
+
+  jornadaActiva?: JornadaActiva;
+
+  loadJornadaActiva(): void {
+    this.jornadaService
+      .getJornadasActivas$()
+      .pipe(take(1))
+      .subscribe({
+        next: (jornadas) => {
+          this.jornadaActiva = jornadas.length ? jornadas[0] : undefined;
+
+          if (!this.jornadaActiva) {
+            this.pushNotification(
+              'error',
+              'Sin jornada activa',
+              'No existe una jornada activa para registrar usuarios.'
+            );
+          }
+        },
+        error: () => {
+          this.pushNotification(
+            'error',
+            'Error',
+            'No se pudo obtener la jornada activa.'
+          );
+        },
+      });
+  }
+
+
 
 
 
@@ -608,6 +646,7 @@ export class UserFormEspecialComponent implements OnInit {
 
 
     await this.loadEmpresas();
+    this.loadJornadaActiva();
     this.pushNotification(
       'info',
       'Listo para registrar',
@@ -842,45 +881,53 @@ export class UserFormEspecialComponent implements OnInit {
     );
   }
 
-  addManualUser() {
-    if (this.manualForm.invalid) {
-      this.manualForm.markAllAsTouched();
+  addManualUser(): void {
+    if (this.manualForm.invalid || !this.jornadaActiva) {
       this.pushNotification(
         'error',
-        'Campos incompletos',
-        'Verifique los datos requeridos antes de continuar.'
+        'No se pudo agregar',
+        !this.jornadaActiva
+          ? 'No existe una jornada activa.'
+          : 'Completa correctamente el formulario.'
       );
       return;
     }
 
-    const formValue = this.manualForm.value;
+    const user = {
+      // Datos del formulario
+      nombre: this.manualForm.value.nombre,
+      apellidoPaterno: this.manualForm.value.apellidoPaterno,
+      apellidoMaterno: this.manualForm.value.apellidoMaterno,
+      funcion: this.manualForm.value.funcion,
+      telefono: this.manualForm.value.telefono,
+      email: this.manualForm.value.email, // ✅ CORRECTO
 
-    const user: any = {
-      nombre: formValue.nombre,
-      apellidoPaterno: formValue.apellidoPaterno,
-      apellidoMaterno: formValue.apellidoMaterno,
-      funcion: formValue.funcion,
-      telefono: formValue.telefono,
+      // Contexto
+      areaId: this.areaForm.value.areaId,
+      empresaId: this.empresaForm.value.empresaId || null,
+
+      // Jornada automática
+      jornada: this.jornadaActiva.jornada, // ✅ EXISTE
+
+      // Metadata
+      fechaRegistro: new Date().toISOString(),
     };
 
-    if (this.isHamcoUser) {
-      user.codigoPulsera = formValue.codigoPulsera;
-    } else {
-      user.email = formValue.email;
-    }
+    // Mostrar inmediatamente en la tabla
+    this.previewUsers = [...this.previewUsers, user];
 
-    this.previewUsers.push(user);
-    this.previewUsers = [...this.previewUsers];
-
+    // Limpiar formulario
     this.manualForm.reset();
+
     this.pushNotification(
       'success',
       'Usuario agregado',
-      'El usuario se agregó correctamente a la lista.'
+      `Asignado a la jornada ${this.jornadaActiva.jornada}`
     );
   }
-  async submitSingleUserFromManual() {
-    // Validaciones
+
+  async submitSingleUserFromManual(): Promise<void> {
+    // 🔎 Validación formulario
     if (this.manualForm.invalid) {
       this.manualForm.markAllAsTouched();
       this.pushNotification(
@@ -891,6 +938,7 @@ export class UserFormEspecialComponent implements OnInit {
       return;
     }
 
+    // 🔎 Validación área
     if (this.areaForm.invalid) {
       this.pushNotification(
         'error',
@@ -900,6 +948,17 @@ export class UserFormEspecialComponent implements OnInit {
       return;
     }
 
+    // 🔎 Validación jornada
+    if (!this.jornadaActiva) {
+      this.pushNotification(
+        'error',
+        'Sin jornada activa',
+        'No existe una jornada activa para registrar usuarios.'
+      );
+      return;
+    }
+
+    // 🔎 Validación sesión
     const authUser = this.authService.getCurrentUser();
     if (!authUser?.email) {
       this.pushNotification(
@@ -913,19 +972,21 @@ export class UserFormEspecialComponent implements OnInit {
     this.isSubmitting = true;
 
     try {
+      // 📌 Usuario que registra
       const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
+      // 📌 Determinar empresa
       let empresaIdFinal: string | undefined;
 
       if (this.canSelectEmpresa) {
         empresaIdFinal = this.empresaForm.value.empresaId ?? undefined;
+
         if (!empresaIdFinal) {
           this.pushNotification(
             'error',
             'Empresa requerida',
             'Seleccione una empresa.'
           );
-          this.isSubmitting = false;
           return;
         }
       } else {
@@ -938,31 +999,42 @@ export class UserFormEspecialComponent implements OnInit {
 
       const formValue = this.manualForm.value;
 
+      // 🧱 Objeto FINAL que se guarda en Firebase
       const userData: any = {
         nombre: formValue.nombre,
         apellidoPaterno: formValue.apellidoPaterno,
         apellidoMaterno: formValue.apellidoMaterno,
         funcion: formValue.funcion,
         telefono: formValue.telefono,
+
         areaId: this.areaForm.value.areaId,
         empresaId: empresaIdFinal,
+
+        // ✅ AQUÍ FALTA LA JORNADA - ESTE ES EL PROBLEMA
+        jornada: this.jornadaActiva?.jornada, // ← AÑADE ESTA LÍNEA
+        // O si prefieres el objeto completo:
+        // jornadaActiva: this.jornadaActiva,
+
         estatus: this.isHamcoUser ? 'canjeado' : 'aprobado',
       };
 
+      // 🔀 Hamco vs Normal
       if (this.isHamcoUser) {
         userData.codigoPulsera = formValue.codigoPulsera;
       } else {
         userData.email = formValue.email;
       }
 
-      // Solo AdminEspecial
+      // 👮 Solo AdminEspecial
       if (this.canSelectEmpresa) {
         userData.reviewedBy = authUser.email;
         userData.reviewedAt = new Date();
       }
 
+      // 💾 Guardar en Firestore
       await this.usersAccessService.createUser(userData, authUser.email);
 
+      // 🧹 Limpiar formulario
       this.manualForm.reset();
 
       this.pushNotification(
@@ -970,9 +1042,8 @@ export class UserFormEspecialComponent implements OnInit {
         'Usuario registrado',
         'El usuario fue registrado correctamente.'
       );
-
     } catch (error) {
-      console.error(error);
+      console.error('Error al registrar usuario:', error);
       this.pushNotification(
         'error',
         'Error al registrar',
@@ -982,6 +1053,7 @@ export class UserFormEspecialComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
+
 
 
 
@@ -1041,6 +1113,8 @@ export class UserFormEspecialComponent implements OnInit {
           ...u,
           areaId: this.areaForm.value.areaId,
           empresaId: empresaIdFinal,
+          // ✅ AQUÍ TAMBIÉN FALTA LA JORNADA
+          jornada: this.jornadaActiva?.jornada, // ← AÑADE ESTA LÍNEA
           estatus: this.isHamcoUser ? 'canjeado' : 'aprobado',
         };
 

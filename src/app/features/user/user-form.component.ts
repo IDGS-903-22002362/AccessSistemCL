@@ -27,6 +27,11 @@ import { UsersService } from '../../core/services/users.service';
 import { Empresa } from '../../core/services/empresas.service';
 import { EmpresasService } from '../../core/services/empresas.service';
 import * as XLSX from 'xlsx';
+import {
+  JornadaActivaService,
+  JornadaActiva,
+} from '../../core/services/jornadas.service';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-form',
@@ -937,6 +942,7 @@ export class UserFormComponent implements OnInit {
   private empresasService = inject(EmpresasService);
   private usersService = inject(UsersService);
   isHamcoUser = false;
+  private jornadaService = inject(JornadaActivaService);
 
   selectedFileName: string | null = null;
   showManualForm = false;
@@ -956,6 +962,33 @@ export class UserFormComponent implements OnInit {
     icon: string;
   }> = [];
   private notificationId = 0;
+  jornadaActiva?: JornadaActiva;
+
+  loadJornadaActiva(): void {
+    this.jornadaService
+      .getJornadasActivas$()
+      .pipe(take(1))
+      .subscribe({
+        next: (jornadas) => {
+          this.jornadaActiva = jornadas.length ? jornadas[0] : undefined;
+
+          if (!this.jornadaActiva) {
+            this.pushNotification(
+              'error',
+              'Sin jornada activa',
+              'No existe una jornada activa para registrar usuarios.'
+            );
+          }
+        },
+        error: () => {
+          this.pushNotification(
+            'error',
+            'Error',
+            'No se pudo obtener la jornada activa.'
+          );
+        },
+      });
+  }
 
   async checkEmpresaAccess() {
     const authUser = this.authService.getCurrentUser();
@@ -1116,6 +1149,7 @@ export class UserFormComponent implements OnInit {
     this.manualForm.get('codigoPulsera')?.updateValueAndValidity();
 
     await this.loadEmpresas();
+    this.loadJornadaActiva();
     this.pushNotification(
       'info',
       'Listo para registrar',
@@ -1182,6 +1216,11 @@ export class UserFormComponent implements OnInit {
           user[key] = value;
         }
       });
+
+      // ✅ AÑADE LA JORNADA ACTIVA A CADA USUARIO PROCESADO
+      if (this.jornadaActiva) {
+        user.jornada = this.jornadaActiva.jornada;
+      }
 
       parsedUsers.push(user);
     });
@@ -1408,12 +1447,14 @@ export class UserFormComponent implements OnInit {
   }
 
   addManualUser() {
-    if (this.manualForm.invalid) {
+    if (this.manualForm.invalid || !this.jornadaActiva) {
       this.manualForm.markAllAsTouched();
       this.pushNotification(
         'error',
-        'Campos incompletos',
-        'Verifique los datos requeridos antes de continuar.'
+        'No se pudo agregar',
+        !this.jornadaActiva
+          ? 'No existe una jornada activa.'
+          : 'Verifique los datos requeridos antes de continuar.'
       );
       return;
     }
@@ -1427,6 +1468,9 @@ export class UserFormComponent implements OnInit {
       funcion: formValue.funcion,
       telefono: formValue.telefono,
       email: formValue.email,
+
+      // ✅ AÑADE LA JORNADA ACTIVA
+      jornada: this.jornadaActiva.jornada,
     };
 
     this.previewUsers.push(user);
@@ -1436,7 +1480,7 @@ export class UserFormComponent implements OnInit {
     this.pushNotification(
       'success',
       'Usuario agregado',
-      'El usuario se agregó correctamente a la lista.'
+      `Usuario agregado a la jornada ${this.jornadaActiva.jornada}` // ← Mensaje actualizado
     );
   }
 
@@ -1446,6 +1490,15 @@ export class UserFormComponent implements OnInit {
         'error',
         'Area requerida',
         'Seleccione un area para continuar.'
+      );
+      return;
+    }
+    // ✅ VALIDA QUE EXISTA JORNADA ACTIVA
+    if (!this.jornadaActiva) {
+      this.pushNotification(
+        'error',
+        'Sin jornada activa',
+        'No existe una jornada activa para registrar usuarios.'
       );
       return;
     }
@@ -1500,6 +1553,7 @@ export class UserFormComponent implements OnInit {
           ...u,
           areaId: this.areaForm.value.areaId,
           empresaId: empresaIdFinal,
+          jornada: this.jornadaActiva.jornada,
           estatus: 'aprobado',
         };
 

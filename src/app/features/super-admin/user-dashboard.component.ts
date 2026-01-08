@@ -47,104 +47,166 @@ import html2canvas from 'html2canvas';
     HttpClientModule,
   ],
   template: `
-  
-  
-
-          <div
-            *ngIf="showFilters"
-            class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
-          >
-          <!-- Panel de Filtros -->
-          <div>
-          <label class="block text-sm font-medium text-[#007A53] mb-1">
-            Jornada
-          </label>
-          <select
-            [(ngModel)]="selectedJornada"
-            (change)="applyFilters()"
-            class="w-full p-2 border-2 border-[#007A53] rounded"
-          >
-            <option value="">Todas</option>
-            <option *ngFor="let j of jornadas" [ngValue]="j">
-              Jornada {{ j }}
-            </option>
-          </select>
+    <!-- Cuadros Dinámicos con Información de Filtros -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <!-- Card: Total de Resultados -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">
+          Total de Resultados
         </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Área</label
-              >
-              <select
-                [(ngModel)]="filters.area"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todas</option>
-                <option *ngFor="let area of uniqueAreas" [value]="area">
-                  {{ areasMap.get(area) || area }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Estado</label
-              >
-              <select
-                [(ngModel)]="filters.estado"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todos</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="aprobado">Aprobado</option>
-                <option value="canjeado">Canjeado</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Función</label
-              >
-              <select
-                [(ngModel)]="filters.funcion"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todas</option>
-                <option *ngFor="let func of uniqueFunciones" [value]="func">
-                  {{ funcionesMap.get(func) || func }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-[#007A53] mb-1"
-                >Registrante</label
-              >
-              <select
-                [(ngModel)]="filters.registrante"
-                (change)="applyFilters()"
-                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-              >
-                <option value="">Todos</option>
-                <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
-                  {{ reg }}
-                </option>
-              </select>
-            </div>
-          </div>
+        <div class="text-3xl font-bold text-[#007A53]">
+          {{ filteredSolicitudes.length }}
+        </div>
+      </div>
 
-          <div *ngIf="loading" class="text-center py-8">
-            <p class="text-gray-600">Cargando solicitudes...</p>
-          </div>
+      <!-- Card: Área Seleccionada -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Área</div>
+        <div class="text-xl font-semibold text-[#007A53] truncate">
+          {{ filters.area ? areasMap.get(filters.area) || 'Todas' : 'Todas' }}
+        </div>
+      </div>
 
-          <div *ngIf="!loading && !hasPermissions" class="text-center py-8">
-            <mat-icon class="text-red-500 text-5xl">block</mat-icon>
-            <p class="text-red-600 mt-4 text-lg">
-              No tienes permisos para administrar solicitudes.
-            </p>
-            <p class="text-gray-600 mt-2">
-              Contacta con el administrador del sistema.
-            </p>
-          </div>
+      <!-- Card: Jornada Seleccionada -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Jornada</div>
+        <div class="text-xl font-semibold text-[#007A53]">
+          {{ selectedJornada !== '' ? 'Jornada ' + selectedJornada : 'Todas' }}
+        </div>
+      </div>
+
+      <!-- Card: Partido -->
+      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 shadow-md">
+        <div class="text-sm font-medium text-gray-600 mb-1">Partido</div>
+        <div class="text-sm font-semibold text-[#007A53]">
+          {{ getPartidoByJornada(selectedJornada) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón para Mostrar/Ocultar Filtros -->
+    <div class="mb-4">
+      <button
+        (click)="toggleFilters()"
+        class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
+      >
+        <mat-icon>{{
+          showFilters ? 'filter_list_off' : 'filter_list'
+        }}</mat-icon>
+        {{ showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros' }}
+      </button>
+    </div>
+
+    <!-- Buscador -->
+    <div class="mb-4">
+      <div class="relative">
+        <mat-icon class="absolute left-3 top-3 text-gray-400">search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+          placeholder="Buscar por ID, nombre, correo..."
+          class="w-full pl-10 pr-4 py-2 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        />
+      </div>
+    </div>
+
+    <div
+      *ngIf="showFilters"
+      class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+    >
+      <!-- Panel de Filtros -->
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1">
+          Jornada
+        </label>
+        <select
+          [(ngModel)]="selectedJornada"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let partido of partidos" [ngValue]="partido.jornada">
+            Jornada {{ partido.jornada }} - {{ partido.equipo_local }} vs
+            {{ partido.equipo_visitante }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Área</label
+        >
+        <select
+          [(ngModel)]="filters.area"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let area of uniqueAreas" [value]="area">
+            {{ areasMap.get(area) || area }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Estado</label
+        >
+        <select
+          [(ngModel)]="filters.estado"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="canjeado">Canjeado</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Función</label
+        >
+        <select
+          [(ngModel)]="filters.funcion"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todas</option>
+          <option *ngFor="let func of uniqueFunciones" [value]="func">
+            {{ funcionesMap.get(func) || func }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-[#007A53] mb-1"
+          >Registrante</label
+        >
+        <select
+          [(ngModel)]="filters.registrante"
+          (change)="applyFilters()"
+          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+        >
+          <option value="">Todos</option>
+          <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
+            {{ reg }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="text-center py-8">
+      <p class="text-gray-600">Cargando solicitudes...</p>
+    </div>
+
+    <div *ngIf="!loading && !hasPermissions" class="text-center py-8">
+      <mat-icon class="text-red-500 text-5xl">block</mat-icon>
+      <p class="text-red-600 mt-4 text-lg">
+        No tienes permisos para administrar solicitudes.
+      </p>
+      <p class="text-gray-600 mt-2">
+        Contacta con el administrador del sistema.
+      </p>
+    </div>
 
           <div
             *ngIf="
@@ -204,7 +266,7 @@ import html2canvas from 'html2canvas';
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr
-                  *ngFor="let solicitud of filteredSolicitudes"
+                  *ngFor="let solicitud of pagedSolicitudes"
                   class="hover:bg-[#007A53] hover:bg-opacity-5"
                   [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
                   [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
@@ -252,6 +314,31 @@ import html2canvas from 'html2canvas';
                 </tr>
               </tbody>
             </table>
+            <div
+  *ngIf="filteredSolicitudes.length > pageSize"
+  class="flex justify-center items-center gap-4 mt-4"
+>
+  <button
+    (click)="currentPage = currentPage - 1; updatePagination()"
+    [disabled]="currentPage === 1"
+    class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+  >
+    Anterior
+  </button>
+
+  <span class="text-sm font-medium">
+    Página {{ currentPage }} de {{ totalPages }}
+  </span>
+
+  <button
+    (click)="currentPage = currentPage + 1; updatePagination()"
+    [disabled]="currentPage === totalPages"
+    class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+  >
+    Siguiente
+  </button>
+</div>
+
           </div>
 
         `,
@@ -268,11 +355,33 @@ export class SuperAdminDashboard implements OnInit {
   private partidosService = inject(PartidosService);
   // Nueva propiedad para controlar estado de exportación
   exportingPDF = false;
+  searchTerm: string = ''; // ✅ Agrega esto
+
 
   partidos: any[] = [];
   selectedPartido = '';
   jornadas: number[] = [];
   selectedJornada: number | '' = '';
+
+  // 🔹 Paginación
+  pageSize = 10;
+  currentPage = 1;
+  totalPages = 1;
+
+  // 🔹 Datos SOLO para la tabla
+  pagedSolicitudes: UserAccess[] = [];
+
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.filteredSolicitudes.length / this.pageSize);
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = 1;
+    }
+
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+
+    this.pagedSolicitudes = this.filteredSolicitudes.slice(start, end);
+  }
 
   /**
    * Exportar tabla filtrada a PDF
@@ -284,15 +393,101 @@ export class SuperAdminDashboard implements OnInit {
       // Crear un título para el PDF
       const title = `Reporte de Solicitudes - ${new Date().toLocaleDateString()}`;
 
-      // Obtener el elemento de la tabla
-      const element = document.getElementById('pdfTable');
+      // Crear un elemento temporal para la tabla completa
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '210mm'; // Ancho A4
+      tempDiv.style.backgroundColor = '#ffffff';
 
-      if (!element) {
-        console.error('No se encontró la tabla para exportar');
-        alert('No se puede exportar porque la tabla no está disponible.');
-        this.exportingPDF = false;
-        return;
-      }
+      // Crear tabla con TODOS los registros filtrados
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.fontSize = '12px';
+
+      // Encabezados
+      const thead = document.createElement('thead');
+      thead.style.backgroundColor = '#007A53';
+      thead.style.color = 'white';
+
+      const headerRow = document.createElement('tr');
+      ['Nombre', 'Email', 'Área', 'Función', 'Teléfono', 'Estado', 'Jornada'].forEach(headerText => {
+        const th = document.createElement('th');
+        th.style.padding = '8px';
+        th.style.textAlign = 'left';
+        th.style.border = '1px solid #ddd';
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+      });
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Cuerpo de la tabla con TODOS los registros filtrados
+      const tbody = document.createElement('tbody');
+
+      this.filteredSolicitudes.forEach((solicitud, index) => {
+        const row = document.createElement('tr');
+        row.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9';
+
+        // Nombre
+        const tdNombre = document.createElement('td');
+        tdNombre.style.padding = '8px';
+        tdNombre.style.border = '1px solid #ddd';
+        tdNombre.textContent = `${solicitud.nombre} ${solicitud.apellidoPaterno} ${solicitud.apellidoMaterno || ''}`;
+        row.appendChild(tdNombre);
+
+        // Email
+        const tdEmail = document.createElement('td');
+        tdEmail.style.padding = '8px';
+        tdEmail.style.border = '1px solid #ddd';
+        tdEmail.textContent = solicitud.email || '';
+        row.appendChild(tdEmail);
+
+        // Área
+        const tdArea = document.createElement('td');
+        tdArea.style.padding = '8px';
+        tdArea.style.border = '1px solid #ddd';
+        tdArea.textContent = this.areasMap.get(solicitud.areaId) || solicitud.areaId || '';
+        row.appendChild(tdArea);
+
+        // Función
+        const tdFuncion = document.createElement('td');
+        tdFuncion.style.padding = '8px';
+        tdFuncion.style.border = '1px solid #ddd';
+        tdFuncion.textContent = this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '';
+        row.appendChild(tdFuncion);
+
+        // Teléfono
+        const tdTelefono = document.createElement('td');
+        tdTelefono.style.padding = '8px';
+        tdTelefono.style.border = '1px solid #ddd';
+        tdTelefono.textContent = solicitud.telefono || '';
+        row.appendChild(tdTelefono);
+
+        // Estado
+        const tdEstado = document.createElement('td');
+        tdEstado.style.padding = '8px';
+        tdEstado.style.border = '1px solid #ddd';
+        tdEstado.textContent = solicitud.estatus || '';
+        row.appendChild(tdEstado);
+
+        // Jornada
+        // En la parte donde creas la celda de Jornada
+        const tdJornada = document.createElement('td');
+        tdJornada.style.padding = '8px';
+        tdJornada.style.border = '1px solid #ddd';
+        // Convertir explícitamente a string
+        tdJornada.textContent = solicitud.jornada ? String(solicitud.jornada) : 'No asignada';
+        row.appendChild(tdJornada);
+
+        tbody.appendChild(row);
+      });
+
+      table.appendChild(tbody);
+      tempDiv.appendChild(table);
+      document.body.appendChild(tempDiv);
 
       // Opciones para html2canvas
       const options = {
@@ -300,10 +495,12 @@ export class SuperAdminDashboard implements OnInit {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        width: tempDiv.offsetWidth,
+        windowWidth: 210 * 3.78, // Convertir mm a px (210mm * 3.78px/mm)
       };
 
       // Convertir a canvas
-      const canvas = await html2canvas(element, options);
+      const canvas = await html2canvas(tempDiv, options);
 
       // Calcular dimensiones
       const imgWidth = 210; // A4 en mm
@@ -317,10 +514,16 @@ export class SuperAdminDashboard implements OnInit {
       pdf.setFontSize(16);
       pdf.setTextColor(0, 122, 83);
       pdf.text(title, 10, 10);
+      // 👉 CORREO DEL REGISTRANTE (debajo del título)
+      const registrantEmail =
+        this.filters.registrante ||
+        this.filteredSolicitudes[0]?.registrantEmail ||
+        'No especificado';
 
       // Agregar información de filtros
       pdf.setFontSize(10);
       pdf.setTextColor(0, 0, 0);
+      pdf.text(`Registrado por: ${registrantEmail}`, 10, 16);
 
       let yPosition = 20;
 
@@ -345,36 +548,12 @@ export class SuperAdminDashboard implements OnInit {
         yPosition += 5;
       }
 
-      // ✅ NUEVO: Agregar información del registrante si hay filtro aplicado
       if (this.filters.registrante) {
         pdf.text(`Registrante: ${this.filters.registrante}`, 10, yPosition);
         yPosition += 5;
       }
 
-      // ✅ NUEVO: Agregar información general de todos los registrantes únicos en los datos filtrados
-      if (this.filteredSolicitudes.length > 0) {
-        // Obtener todos los registrantes únicos de los datos filtrados
-        const registrantesUnicos = [...new Set(this.filteredSolicitudes.map(s => s.registrantEmail).filter(Boolean))];
-
-        if (registrantesUnicos.length > 0) {
-          pdf.text('Registrantes en el reporte:', 10, yPosition);
-          yPosition += 5;
-
-          // Mostrar cada registrante en una línea (limitado a los primeros 3 por espacio)
-          registrantesUnicos.slice(0, 3).forEach((registrante, index) => {
-            pdf.text(`  • ${registrante}`, 15, yPosition);
-            yPosition += 5;
-          });
-
-          // Si hay más de 3 registrantes, mostrar contador
-          if (registrantesUnicos.length > 3) {
-            pdf.text(`  • ... y ${registrantesUnicos.length - 3} más`, 15, yPosition);
-            yPosition += 5;
-          }
-        }
-      }
-
-      // Agregar resumen de resultados
+      // Agregar información general
       pdf.text(`Total de registros: ${this.filteredSolicitudes.length}`, 10, yPosition + 5);
       yPosition += 10;
 
@@ -387,21 +566,24 @@ export class SuperAdminDashboard implements OnInit {
         pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth - 20, imgHeight);
       } else {
         // Necesita múltiples páginas
-        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth - 20, imgHeight);
-
-        // Calcular si necesitamos páginas adicionales
-        let heightLeft = imgHeight - (pageHeight - yPosition);
+        let heightLeft = imgHeight;
+        let position = yPosition;
         let pageCount = 1;
 
         while (heightLeft > 0) {
-          pageCount++;
-          pdf.addPage();
-          // Calcular nueva posición para la parte restante de la imagen
-          const newY = -((pageHeight - 20) * (pageCount - 1) - yPosition);
-          pdf.addImage(imgData, 'PNG', 10, newY, imgWidth - 20, imgHeight);
-          heightLeft -= (pageHeight - 20);
+          pdf.addImage(imgData, 'PNG', 10, position, imgWidth - 20, imgHeight);
+          heightLeft -= (pageHeight - position);
+
+          if (heightLeft > 0) {
+            pdf.addPage();
+            position = -((pageHeight - yPosition) * pageCount - yPosition);
+            pageCount++;
+          }
         }
       }
+
+      // Eliminar el elemento temporal
+      document.body.removeChild(tempDiv);
 
       // Guardar el PDF
       const fecha = new Date().toISOString().split('T')[0];
@@ -409,10 +591,10 @@ export class SuperAdminDashboard implements OnInit {
       const fileName = `reporte_solicitudes_${fecha}_${hora}.pdf`;
       pdf.save(fileName);
 
-      console.log(' PDF exportado exitosamente');
+      console.log('✅ PDF exportado exitosamente con todos los registros');
 
     } catch (error) {
-      console.error(' Error al exportar PDF:', error);
+      console.error('❌ Error al exportar PDF:', error);
       alert('Error al generar el PDF. Por favor, intenta nuevamente.');
     } finally {
       this.exportingPDF = false;
@@ -526,7 +708,7 @@ export class SuperAdminDashboard implements OnInit {
     funcion: '',
     registrante: '',
   };
-  showFilters = false;
+  showFilters = false; // Comienza oculto
 
   // Opciones para filtros
   uniqueAreas: string[] = [];
@@ -543,7 +725,7 @@ export class SuperAdminDashboard implements OnInit {
 
       // 👉 EXTRAER JORNADAS ÚNICAS PARA EL SELECT
       const jornadasSet = new Set<number>();
-      partidos.forEach(p => {
+      partidos.forEach((p) => {
         if (p.jornada !== undefined) {
           jornadasSet.add(p.jornada);
         }
@@ -553,6 +735,28 @@ export class SuperAdminDashboard implements OnInit {
     });
   }
 
+  /**
+   * Obtener el partido correspondiente a una jornada
+   */
+  getPartidoByJornada(jornada: number | ''): string {
+    if (jornada === '' || !this.partidos.length) {
+      return 'Todas';
+    }
+
+    const partido = this.partidos.find((p) => p.jornada === jornada);
+    if (partido) {
+      return `${partido.equipo_local} vs ${partido.equipo_visitante}`;
+    }
+
+    return 'No asignado';
+  }
+
+  /**
+   * Toggle para mostrar/ocultar filtros
+   */
+  toggleFilters() {
+    this.showFilters = !this.showFilters;
+  }
 
   async ngOnInit() {
     console.log('🚀 Iniciando AdminArea Dashboard...');
@@ -728,7 +932,9 @@ export class SuperAdminDashboard implements OnInit {
 
       // Extraer opciones únicas para filtros
       this.extractFilterOptions();
-      this.showFilters = true;
+      this.currentPage = 1;
+      this.updatePagination(); // 🔥 ESTO FALTABA
+
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       this.filteredSolicitudes = [];
@@ -746,7 +952,7 @@ export class SuperAdminDashboard implements OnInit {
     const registrantes = new Set<string>();
 
     this.allSolicitudes
-      .filter(s => this.canViewSolicitud(s))
+      .filter((s) => this.canViewSolicitud(s))
       .forEach((sol) => {
         if (sol.areaId) areas.add(sol.areaId);
         if (sol.funcion) funciones.add(sol.funcion);
@@ -758,7 +964,6 @@ export class SuperAdminDashboard implements OnInit {
     this.uniqueRegistrantes = Array.from(registrantes);
   }
 
-
   /**
    * Aplicar filtros a las solicitudes
    */
@@ -766,6 +971,23 @@ export class SuperAdminDashboard implements OnInit {
     let filtered = this.allSolicitudes.filter((solicitud) =>
       this.canViewSolicitud(solicitud)
     );
+
+    // Filtro de búsqueda por ID, nombre o correo
+    if (this.searchTerm && this.searchTerm.trim() !== '') {
+      const searchLower = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((s) => {
+        const id = s.id?.toLowerCase() || '';
+        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${s.apellidoMaterno || ''
+          }`.toLowerCase();
+        const email = s.email?.toLowerCase() || '';
+
+        return (
+          id.includes(searchLower) ||
+          nombre.includes(searchLower) ||
+          email.includes(searchLower)
+        );
+      });
+    }
 
     if (this.filters.area) {
       filtered = filtered.filter((s) => s.areaId === this.filters.area);
@@ -783,15 +1005,16 @@ export class SuperAdminDashboard implements OnInit {
     }
     // ✅ FILTRO POR JORNADA - Asegúrate de manejar undefined
     if (this.selectedJornada !== '') {
-      filtered = filtered.filter(
-        s => s.jornada === this.selectedJornada
-      );
+      filtered = filtered.filter((s) => s.jornada === this.selectedJornada);
     }
 
     this.filteredSolicitudes = filtered;
     this.updateCounts();
     this.selectedSolicitudes.clear();
     this.selectAll = false;
+    this.currentPage = 1;
+    this.updatePagination();
+
   }
 
   /**
