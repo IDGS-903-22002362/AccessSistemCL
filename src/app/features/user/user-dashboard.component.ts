@@ -382,6 +382,8 @@ export class UserDashboardComponent implements OnInit {
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
   isHamcoUser = false;
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
 
   // ===== Filtros =====
   showFilters = false;
@@ -505,8 +507,7 @@ export class UserDashboardComponent implements OnInit {
       this.cdr.detectChanges();
 
       console.log(
-        `✅ Usuarios cargados (${
-          this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'
+        `✅ Usuarios cargados (${this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'
         })`,
         mapped.length
       );

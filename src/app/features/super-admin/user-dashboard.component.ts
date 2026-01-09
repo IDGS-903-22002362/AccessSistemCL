@@ -489,9 +489,8 @@ export class SuperAdminDashboard implements OnInit {
         const tdNombre = document.createElement('td');
         tdNombre.style.padding = '8px';
         tdNombre.style.border = '1px solid #ddd';
-        tdNombre.textContent = `${solicitud.nombre} ${
-          solicitud.apellidoPaterno
-        } ${solicitud.apellidoMaterno || ''}`;
+        tdNombre.textContent = `${solicitud.nombre} ${solicitud.apellidoPaterno
+          } ${solicitud.apellidoMaterno || ''}`;
         row.appendChild(tdNombre);
 
         // Email
@@ -609,8 +608,7 @@ export class SuperAdminDashboard implements OnInit {
 
       if (this.filters.funcion) {
         pdf.text(
-          `Función: ${
-            this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
+          `Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
           }`,
           10,
           yPosition
@@ -1125,9 +1123,8 @@ export class SuperAdminDashboard implements OnInit {
       const searchLower = this.searchTerm.toLowerCase().trim();
       filtered = filtered.filter((s) => {
         const id = s.id?.toLowerCase() || '';
-        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${
-          s.apellidoMaterno || ''
-        }`.toLowerCase();
+        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${s.apellidoMaterno || ''
+          }`.toLowerCase();
         const email = s.email?.toLowerCase() || '';
 
         return (
