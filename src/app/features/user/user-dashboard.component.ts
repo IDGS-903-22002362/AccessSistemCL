@@ -27,8 +27,6 @@ import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angu
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
-import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
 
 @Component({
@@ -366,8 +364,6 @@ export class UserDashboardComponent implements OnInit {
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
   private cdr = inject(ChangeDetectorRef);
-  private snackBar = inject(MatSnackBar);
-  private dialog = inject(MatDialog);
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   private empresasService = inject(EmpresasService);
@@ -835,7 +831,7 @@ export class ConfirmDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ConfirmDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
-  ) {}
+  ) { }
 
   onConfirm(): void {
     this.dialogRef.close(true);
