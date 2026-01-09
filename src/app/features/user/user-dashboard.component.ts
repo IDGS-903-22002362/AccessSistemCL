@@ -1,4 +1,10 @@
-﻿import { Component, inject, OnInit, ChangeDetectorRef, Inject } from '@angular/core';
+﻿import {
+  Component,
+  inject,
+  OnInit,
+  ChangeDetectorRef,
+  Inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -23,12 +29,15 @@ import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
-import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
 
 @Component({
@@ -278,31 +287,32 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                   </td>
                 </ng-container>
                 <!-- Acciones (solo para hamco) -->
-              <ng-container matColumnDef="acciones">
-                <th mat-header-cell *matHeaderCellDef>Acciones</th>
-                <td mat-cell *matCellDef="let user">
-                  @if (isHamcoUser) {
-                    @if (!user.codigoPulsera || user.codigoPulsera === 'SIN_PULSERA_ASIGNADA') {
-                      <button
-                        mat-raised-button
-                        color="primary"
-                        (click)="asignarCodigoPulsera(user)"
-                        style="background-color: #007A53; color: white;"
-                        matTooltip="Asignar código de pulsera"
-                      >
-                        <mat-icon>qr_code</mat-icon>
-                        Asignar
-                      </button>
+                <ng-container matColumnDef="acciones">
+                  <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                  <td mat-cell *matCellDef="let user">
+                    @if (isHamcoUser) { @if (!user.codigoPulsera ||
+                    user.codigoPulsera === 'SIN_PULSERA_ASIGNADA') {
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      (click)="asignarCodigoPulsera(user)"
+                      style="background-color: #007A53; color: white;"
+                      matTooltip="Asignar código de pulsera"
+                    >
+                      <mat-icon>qr_code</mat-icon>
+                      Asignar
+                    </button>
                     } @else {
-                      <div class="flex flex-col items-start">
-                        <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                          {{ user.codigoPulsera }}
-                        </span>
-                      </div>
-                    }
-                  }
-                </td>
-              </ng-container>
+                    <div class="flex flex-col items-start">
+                      <span
+                        class="font-mono text-sm bg-gray-100 px-2 py-1 rounded"
+                      >
+                        {{ user.codigoPulsera }}
+                      </span>
+                    </div>
+                    } }
+                  </td>
+                </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                 <tr
@@ -374,8 +384,6 @@ export class UserDashboardComponent implements OnInit {
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
   isHamcoUser = false;
-  private dialog = inject(MatDialog);
-  private snackBar = inject(MatSnackBar);
 
   // ===== Filtros =====
   showFilters = false;
@@ -421,7 +429,15 @@ export class UserDashboardComponent implements OnInit {
 
   // Modifica displayedColumns para que sea dinámico
   get displayedColumns(): string[] {
-    const baseColumns = ['nombre', 'email', 'empresa', 'funcion', 'estatus', 'fecha', 'pdf'];
+    const baseColumns = [
+      'nombre',
+      'email',
+      'empresa',
+      'funcion',
+      'estatus',
+      'fecha',
+      'pdf',
+    ];
     if (this.isHamcoUser) {
       return [...baseColumns, 'acciones'];
     }
@@ -455,10 +471,7 @@ export class UserDashboardComponent implements OnInit {
       const mapped = users.map((user) => {
         const estatusNormalized = this.normalizeStatus(user.estatus);
         const pdfUrlResolved =
-          user.pdfUrl ||
-          (user as any).pdfURL ||
-          (user as any).pdf_url ||
-          '';
+          user.pdfUrl || (user as any).pdfURL || (user as any).pdf_url || '';
 
         return {
           ...user,
@@ -494,7 +507,9 @@ export class UserDashboardComponent implements OnInit {
       this.cdr.detectChanges();
 
       console.log(
-        `✅ Usuarios cargados (${this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'})`,
+        `✅ Usuarios cargados (${
+          this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'
+        })`,
         mapped.length
       );
 
@@ -511,20 +526,20 @@ export class UserDashboardComponent implements OnInit {
       width: '400px',
       data: {
         nombre: `${user.nombre} ${user.apellidoPaterno}`,
-        codigoActual: user.codigoPulsera || 'SIN_PULSERA_ASIGNADA'
-      }
+        codigoActual: user.codigoPulsera || 'SIN_PULSERA_ASIGNADA',
+      },
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result && result.codigoPulsera) {
         try {
           await this.usersAccessService.updateUser(user.id, {
-            codigoPulsera: result.codigoPulsera
+            codigoPulsera: result.codigoPulsera,
           });
 
           this.snackBar.open('✅ Código asignado correctamente', 'Cerrar', {
             duration: 3000,
-            panelClass: ['success-snackbar']
+            panelClass: ['success-snackbar'],
           });
 
           // Recargar usuarios para mostrar el cambio
@@ -533,13 +548,12 @@ export class UserDashboardComponent implements OnInit {
           console.error('Error al asignar código:', error);
           this.snackBar.open('❌ Error al asignar código', 'Cerrar', {
             duration: 3000,
-            panelClass: ['error-snackbar']
+            panelClass: ['error-snackbar'],
           });
         }
       }
     });
   }
-
 
   /**
    * Verifica si hay usuarios aprobados sin PDF y programa recargas automáticas
@@ -739,16 +753,12 @@ export class UserDashboardComponent implements OnInit {
     const confirmed = await dialogRef.afterClosed().toPromise();
     if (!confirmed) return;
 
-    const snackBarRef = this.snackBar.open(
-      'Reenviando correo...',
-      '',
-      {
-        duration: 0,
-        panelClass: ['info-snackbar'],
-        horizontalPosition: 'center',
-        verticalPosition: 'top',
-      }
-    );
+    const snackBarRef = this.snackBar.open('Reenviando correo...', '', {
+      duration: 0,
+      panelClass: ['info-snackbar'],
+      horizontalPosition: 'center',
+      verticalPosition: 'top',
+    });
 
     try {
       const result = await this.usersAccessService.resendAccreditationEmail(
@@ -806,11 +816,7 @@ export class UserDashboardComponent implements OnInit {
       <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ data.title }}</h2>
       <p class="text-gray-600 mb-6">{{ data.message }}</p>
       <div class="flex justify-end gap-3">
-        <button
-          mat-stroked-button
-          (click)="onCancel()"
-          class="px-6"
-        >
+        <button mat-stroked-button (click)="onCancel()" class="px-6">
           {{ data.cancelText || 'Cancelar' }}
         </button>
         <button
@@ -825,11 +831,13 @@ export class UserDashboardComponent implements OnInit {
       </div>
     </div>
   `,
-  styles: [`
-    ::ng-deep .mat-mdc-dialog-container {
-      border-radius: 12px !important;
-    }
-  `]
+  styles: [
+    `
+      ::ng-deep .mat-mdc-dialog-container {
+        border-radius: 12px !important;
+      }
+    `,
+  ],
 })
 export class ConfirmDialogComponent {
   constructor(
