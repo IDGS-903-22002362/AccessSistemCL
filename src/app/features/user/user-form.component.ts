@@ -544,7 +544,7 @@ import { take } from 'rxjs/operators';
           </div>
           <mat-card-content class="p-0">
             <div class="overflow-x-auto">
-              <table mat-table [dataSource]="previewUsers" class="w-full">
+              <table mat-table [dataSource]="pagedUsers" class="w-full">
                 <!-- Nombre Column -->
                 <ng-container matColumnDef="nombre">
                   <th
@@ -674,6 +674,32 @@ import { take } from 'rxjs/operators';
                   class="hover:bg-[#F3FAF6] transition-colors duration-150"
                 ></tr>
               </table>
+            </div>
+
+            <!-- Paginación (similar al otro componente) -->
+            <div
+              *ngIf="previewUsers.length > pageSize"
+              class="flex justify-center items-center gap-4 mt-4 p-4 border-t border-gray-200"
+            >
+              <button
+                (click)="currentPage = currentPage - 1; updatePagination()"
+                [disabled]="currentPage === 1"
+                class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+
+              <span class="text-sm font-medium">
+                Página {{ currentPage }} de {{ totalPages }}
+              </span>
+
+              <button
+                (click)="currentPage = currentPage + 1; updatePagination()"
+                [disabled]="currentPage === totalPages"
+                class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
             </div>
           </mat-card-content>
         </mat-card>
@@ -1045,6 +1071,12 @@ export class UserFormComponent implements OnInit {
   private notificationId = 0;
   jornadaActiva?: JornadaActiva;
 
+  // 🔹 Paginación (similar al otro componente)
+  pageSize = 10;
+  currentPage = 1;
+  totalPages = 1;
+  pagedUsers: any[] = []; // Usuarios que se muestran en la página actual
+
   loadJornadaActiva(): void {
     this.jornadaService
       .getJornadasActivas$()
@@ -1114,14 +1146,20 @@ export class UserFormComponent implements OnInit {
   }
 
   removeUser(index: number) {
-    this.previewUsers.splice(index, 1);
+    // Calcular el índice real en el array completo considerando la paginación
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const realIndex = startIndex + index;
 
-    // Forzamos actualizacion de la tabla
+    this.previewUsers.splice(realIndex, 1);
     this.previewUsers = [...this.previewUsers];
+
+    // Actualizar la paginación después de eliminar
+    this.updatePagination();
+
     this.pushNotification(
       'info',
       'Usuario eliminado',
-      'Se retiro el usuario de la lista.'
+      'Se retiró el usuario de la lista.'
     );
   }
 
@@ -1237,6 +1275,7 @@ export class UserFormComponent implements OnInit {
       'Seleccione la empresa y el area antes de agregar usuarios.'
     );
   }
+
   onlyNumbers(event: KeyboardEvent) {
     const charCode = event.which ? event.which : event.keyCode;
 
@@ -1314,6 +1353,10 @@ export class UserFormComponent implements OnInit {
 
     this.previewUsers = [...this.previewUsers, ...parsedUsers];
     this.isParsing = false;
+
+    // Actualizar paginación después de agregar usuarios
+    this.updatePagination();
+
     this.pushNotification(
       'success',
       'Archivo cargado',
@@ -1329,6 +1372,7 @@ export class UserFormComponent implements OnInit {
       'No se pudo leer el archivo seleccionado.'
     );
   }
+
   parseXLSX(buffer: ArrayBuffer) {
     try {
       const workbook = XLSX.read(buffer, { type: 'array' });
@@ -1517,8 +1561,9 @@ export class UserFormComponent implements OnInit {
 
     this.previewUsers = [...this.previewUsers, ...parsedUsers];
     this.isParsing = false;
-    this.previewUsers = [...this.previewUsers, ...parsedUsers];
-    this.isParsing = false;
+
+    // Actualizar paginación después de agregar usuarios
+    this.updatePagination();
 
     this.pushNotification(
       'success',
@@ -1557,11 +1602,14 @@ export class UserFormComponent implements OnInit {
     this.previewUsers.push(user);
     this.previewUsers = [...this.previewUsers];
 
+    // Actualizar paginación después de agregar usuario
+    this.updatePagination();
+
     this.manualForm.reset();
     this.pushNotification(
       'success',
       'Usuario agregado',
-      `Usuario agregado a la jornada ${this.jornadaActiva.jornada}` // ← Mensaje actualizado
+      `Usuario agregado a la jornada ${this.jornadaActiva.jornada}`
     );
   }
 
@@ -1655,6 +1703,10 @@ export class UserFormComponent implements OnInit {
       this.submitProgress = 100;
       this.submitStatus = 'Solicitudes enviadas';
       this.previewUsers = [];
+
+      // Actualizar paginación después de limpiar usuarios
+      this.updatePagination();
+
       this.pushNotification(
         'success',
         'Solicitudes enviadas',
@@ -1679,6 +1731,19 @@ export class UserFormComponent implements OnInit {
     } finally {
       this.isSubmitting = false;
     }
+  }
+
+  // 🔹 Método para actualizar la paginación (similar al otro componente)
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.previewUsers.length / this.pageSize);
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = 1;
+    }
+
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+
+    this.pagedUsers = this.previewUsers.slice(start, end);
   }
 
   private pushNotification(

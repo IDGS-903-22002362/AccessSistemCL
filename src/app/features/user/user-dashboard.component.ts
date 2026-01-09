@@ -207,7 +207,26 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                     </option>
                   </select>
                 </div>
+                <!-- Empresa -->
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-1">
+                    Empresa
+                  </label>
+                  <select
+                    [(ngModel)]="filters.empresa"
+                    (change)="applyFilters()"
+                    class="w-full p-2 border-2 border-[#007A53] rounded
+                          focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+                  >
+                    <option value="">Todas</option>
+                    <option *ngFor="let emp of uniqueEmpresas" [value]="emp">
+                      {{ empresasMap.get(emp) || emp }}
+                    </option>
+                  </select>
+                </div>
               </div>
+              
+
 
               <table mat-table [dataSource]="paginatedUsers" class="w-full">
                 <!-- Nombre -->
@@ -392,6 +411,7 @@ export class UserDashboardComponent implements OnInit {
   filters = {
     estado: '',
     funcion: '',
+    empresa: '',
   };
 
   allUsers: any[] = []; // respaldo sin filtrar
@@ -406,6 +426,8 @@ export class UserDashboardComponent implements OnInit {
   endIndex = 0;
 
   uniqueFunciones: string[] = [];
+  uniqueEmpresas: string[] = [];
+
 
   async loadFunciones(): Promise<void> {
     const funciones = await this.funcionesService.getFunciones();
@@ -492,6 +514,8 @@ export class UserDashboardComponent implements OnInit {
 
       // 🔹 filtros
       this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
+      this.uniqueEmpresas = [...new Set(mapped.map((u) => u.empresaId))];
+
 
       // 🔹 contadores
       this.totalUsuarios = mapped.length;
@@ -603,6 +627,12 @@ export class UserDashboardComponent implements OnInit {
     if (this.filters.funcion) {
       filtered = filtered.filter((u) => u.funcion === this.filters.funcion);
     }
+    if (this.filters.empresa) {
+      filtered = filtered.filter(
+        (u) => u.empresaId === this.filters.empresa
+      );
+    }
+
 
     this.filteredUsers = filtered;
     this.updatePagination();
