@@ -4,6 +4,7 @@ import { adminGuard, roleGuard } from './core/guards/role.guard';
 import { superAdminGuard } from './core/guards/super-admin.guard';
 import { registranteGuard } from './core/guards/registrante.guard';
 import { analistaGuard } from './core/guards/analista.guard';
+import { adminVisitasGuard } from './core/guards/admin-visitas.guard';
 
 export const routes: Routes = [
   {
@@ -86,6 +87,14 @@ export const routes: Routes = [
         (m) => m.ReportesAnalyticsComponent
       ),
     canActivate: [authGuard, analistaGuard],
+  },
+  {
+    path: 'admin-visitas',
+    loadComponent: () =>
+      import('./features/admin-visitas/admin-visitas-dashboard.component').then(
+        (m) => m.AdminVisitasDashboardComponent
+      ),
+    canActivate: [authGuard, adminVisitasGuard],
   },
   {
     path: '**',

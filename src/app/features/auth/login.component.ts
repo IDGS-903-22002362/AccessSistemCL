@@ -310,6 +310,11 @@ export class LoginComponent {
               await this.router.navigate(['/reportes-analytics']);
               console.log('✅ Navegación completada a /reportes-analytics');
               break;
+            case 'AdminVisitas':
+              console.log('➡️ Navegando a /admin-visitas');
+              await this.router.navigate(['/admin-visitas']);
+              console.log('✅ Navegación completada a /admin-visitas');
+              break;
             default:
               console.error('❌ Rol no reconocido:', userRole.name);
               this.errorMessage =

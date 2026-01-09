@@ -5,13 +5,13 @@
 import {
   onDocumentUpdated,
   onDocumentCreated,
-} from 'firebase-functions/v2/firestore';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { setGlobalOptions } from 'firebase-functions/v2';
-import * as admin from 'firebase-admin';
-import axios from 'axios';
-import PDFDocument from 'pdfkit';
-import QRCode from 'qrcode';
+} from "firebase-functions/v2/firestore";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {setGlobalOptions} from "firebase-functions/v2";
+import * as admin from "firebase-admin";
+import axios from "axios";
+import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
 
 // Inicializar Firebase Admin
 admin.initializeApp();
@@ -20,28 +20,28 @@ admin.initializeApp();
 setGlobalOptions({
   maxInstances: 50,
   timeoutSeconds: 540,
-  memory: '512MiB',
+  memory: "512MiB",
 });
 
 // Mapa de equipos a escudos
 const escudosMap: Record<string, string> = {
-  america: 'america.png',
-  atlas: 'atlas.png',
-  chivas: 'chivas.png',
-  cruzazul: 'cruzazul.png',
-  juarez: 'juarez.png',
-  leon: 'leon.png',
-  mazatlan: 'mazatlan.png',
-  monterrey: 'monterrey.png',
-  necaxa: 'necaxa.png',
-  pachuca: 'pachuca.png',
-  puebla: 'puebla.png',
-  pumas: 'pumas.png',
-  queretaro: 'queretaro.png',
-  santos: 'santos.png',
-  tigres: 'tigres.png',
-  toluca: 'toluca.png',
-  tijuana: 'tijuana.png',
+  america: "america.png",
+  atlas: "atlas.png",
+  chivas: "chivas.png",
+  cruzazul: "cruzazul.png",
+  juarez: "juarez.png",
+  leon: "leon.png",
+  mazatlan: "mazatlan.png",
+  monterrey: "monterrey.png",
+  necaxa: "necaxa.png",
+  pachuca: "pachuca.png",
+  puebla: "puebla.png",
+  pumas: "pumas.png",
+  queretaro: "queretaro.png",
+  santos: "santos.png",
+  tigres: "tigres.png",
+  toluca: "toluca.png",
+  tijuana: "tijuana.png",
 };
 
 /**
@@ -50,9 +50,9 @@ const escudosMap: Record<string, string> = {
 function normalizarEquipo(equipo: string): string {
   return equipo
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Elimina acentos
-    .replace(/[^a-z]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Elimina acentos
+    .replace(/[^a-z]/g, "")
     .trim();
 }
 
@@ -68,7 +68,7 @@ function archivoEscudo(equipo: string): string | null {
   }
 
   // Match por palabras
-  const palabras = key.split(' ');
+  const palabras = key.split(" ");
   for (const palabra of palabras) {
     if (escudosMap[palabra]) {
       return escudosMap[palabra];
@@ -149,10 +149,10 @@ async function getEscudoBuffer(equipo: string): Promise<Buffer | null> {
  */
 async function downloadImage(url: string): Promise<Buffer | null> {
   try {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, {responseType: "arraybuffer"});
     return Buffer.from(response.data);
   } catch (error) {
-    console.error('Error descargando imagen:', error);
+    console.error("Error descargando imagen:", error);
     return null;
   }
 }
@@ -173,11 +173,11 @@ interface BrevoPayload {
  */
 export const sendEmailOnStatusChange = onDocumentUpdated(
   {
-    document: 'usersAccess/{userId}',
-    secrets: ['BREVO_API_KEY'],
+    document: "usersAccess/{userId}",
+    secrets: ["BREVO_API_KEY"],
     maxInstances: 50,
     timeoutSeconds: 540,
-    memory: '512MiB',
+    memory: "512MiB",
     retry: true,
   },
   async (event) => {
@@ -186,11 +186,11 @@ export const sendEmailOnStatusChange = onDocumentUpdated(
     const userId = event.params.userId;
 
     if (!newData || !previousData) {
-      console.log('[UPDATE] Datos no disponibles - userId:', userId);
+      console.log("[UPDATE] Datos no disponibles - userId:", userId);
       return;
     }
 
-    console.log('[UPDATE] Documento actualizado:', {
+    console.log("[UPDATE] Documento actualizado:", {
       userId: userId,
       previousStatus: previousData.estatus,
       newStatus: newData.estatus,
@@ -198,19 +198,19 @@ export const sendEmailOnStatusChange = onDocumentUpdated(
     });
 
     if (newData.estatus === previousData.estatus) {
-      console.log('[UPDATE] Estatus sin cambios - userId:', userId);
+      console.log("[UPDATE] Estatus sin cambios - userId:", userId);
       return;
     }
 
-    if (newData.estatus !== 'aprobado' && newData.estatus !== 'rechazado') {
+    if (newData.estatus !== "aprobado" && newData.estatus !== "rechazado") {
       console.log(
-        '[UPDATE] Estatus no es aprobado/rechazado - userId:',
+        "[UPDATE] Estatus no es aprobado/rechazado - userId:",
         userId
       );
       return;
     }
 
-    console.log('[UPDATE] Iniciando envío de correo - userId:', userId);
+    console.log("[UPDATE] Iniciando envío de correo - userId:", userId);
     await sendEmailNotification(newData, userId, event.data?.after.ref);
   }
 );
@@ -220,11 +220,11 @@ export const sendEmailOnStatusChange = onDocumentUpdated(
  */
 export const sendEmailOnCreate = onDocumentCreated(
   {
-    document: 'usersAccess/{userId}',
-    secrets: ['BREVO_API_KEY'],
+    document: "usersAccess/{userId}",
+    secrets: ["BREVO_API_KEY"],
     maxInstances: 50,
     timeoutSeconds: 540,
-    memory: '512MiB',
+    memory: "512MiB",
     retry: true,
   },
   async (event) => {
@@ -233,36 +233,36 @@ export const sendEmailOnCreate = onDocumentCreated(
 
     if (!newData) {
       console.log(
-        '[CREATE] Datos no disponibles en creación',
-        '- userId:',
+        "[CREATE] Datos no disponibles en creación",
+        "- userId:",
         userId
       );
       return;
     }
 
-    console.log('[CREATE] Documento creado:', {
+    console.log("[CREATE] Documento creado:", {
       userId: userId,
       estatus: newData.estatus,
       email: newData.email,
       nombre: newData.nombre,
     });
 
-    if (newData.estatus !== 'aprobado') {
+    if (newData.estatus !== "aprobado") {
       console.log(
-        '[CREATE] Documento no creado con estatus aprobado',
-        'userId:',
+        "[CREATE] Documento no creado con estatus aprobado",
+        "userId:",
         userId,
-        'estatus:',
+        "estatus:",
         newData.estatus
       );
       return;
     }
 
     console.log(
-      '[CREATE] ✅ Iniciando envío de correo',
-      '- userId:',
+      "[CREATE] ✅ Iniciando envío de correo",
+      "- userId:",
       userId,
-      'email:',
+      "email:",
       newData.email
     );
     await sendEmailNotification(newData, userId, event.data?.ref);
@@ -275,51 +275,51 @@ export const sendEmailOnCreate = onDocumentCreated(
  */
 export const resendAccreditationEmail = onCall(
   {
-    secrets: ['BREVO_API_KEY'],
+    secrets: ["BREVO_API_KEY"],
     maxInstances: 20,
     timeoutSeconds: 540,
-    memory: '512MiB',
+    memory: "512MiB",
   },
   async (request) => {
     // Validar autenticación
     if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Usuario no autenticado');
+      throw new HttpsError("unauthenticated", "Usuario no autenticado");
     }
 
-    const { userId } = request.data;
+    const {userId} = request.data;
 
     if (!userId) {
-      throw new HttpsError('invalid-argument', 'userId es requerido');
+      throw new HttpsError("invalid-argument", "userId es requerido");
     }
 
     console.log(
-      '[RESEND] Iniciando reenvío de correo',
-      '- userId:',
+      "[RESEND] Iniciando reenvío de correo",
+      "- userId:",
       userId,
-      '- solicitadoPor:',
+      "- solicitadoPor:",
       request.auth.uid
     );
 
     try {
       const db = admin.firestore();
-      const docRef = db.collection('usersAccess').doc(userId);
+      const docRef = db.collection("usersAccess").doc(userId);
       const docSnap = await docRef.get();
 
       if (!docSnap.exists) {
-        throw new HttpsError('not-found', 'Usuario no encontrado');
+        throw new HttpsError("not-found", "Usuario no encontrado");
       }
 
       const userData = docSnap.data();
 
       if (!userData) {
-        throw new HttpsError('internal', 'Datos de usuario no disponibles');
+        throw new HttpsError("internal", "Datos de usuario no disponibles");
       }
 
       // Solo permitir reenvío para usuarios aprobados
-      if (userData.estatus !== 'aprobado') {
+      if (userData.estatus !== "aprobado") {
         throw new HttpsError(
-          'failed-precondition',
-          'Solo se puede reenviar correo a usuarios aprobados'
+          "failed-precondition",
+          "Solo se puede reenviar correo a usuarios aprobados"
         );
       }
 
@@ -328,10 +328,10 @@ export const resendAccreditationEmail = onCall(
 
       if (existingPdfUrl) {
         console.log(
-          '[RESEND] PDF existente encontrado',
-          '- userId:',
+          "[RESEND] PDF existente encontrado",
+          "- userId:",
           userId,
-          '- pdfUrl:',
+          "- pdfUrl:",
           existingPdfUrl
         );
 
@@ -339,8 +339,8 @@ export const resendAccreditationEmail = onCall(
         await resendWithExistingPDF(userData, userId, existingPdfUrl);
       } else {
         console.log(
-          '[RESEND] PDF no existe, generando nuevo',
-          '- userId:',
+          "[RESEND] PDF no existe, generando nuevo",
+          "- userId:",
           userId
         );
 
@@ -349,23 +349,23 @@ export const resendAccreditationEmail = onCall(
       }
 
       console.log(
-        '[RESEND] ✅ Correo reenviado exitosamente',
-        '- userId:',
+        "[RESEND] ✅ Correo reenviado exitosamente",
+        "- userId:",
         userId
       );
 
       return {
         success: true,
-        message: 'Correo enviado exitosamente',
+        message: "Correo enviado exitosamente",
         hasPdf: !!existingPdfUrl,
       };
     } catch (error) {
       const err = error as Error;
       console.error(
-        '[RESEND] ❌ Error al reenviar correo:',
-        '- userId:',
+        "[RESEND] ❌ Error al reenviar correo:",
+        "- userId:",
         userId,
-        '- error:',
+        "- error:",
         err.message
       );
 
@@ -374,7 +374,7 @@ export const resendAccreditationEmail = onCall(
       }
 
       throw new HttpsError(
-        'internal',
+        "internal",
         `Error al reenviar correo: ${err.message}`
       );
     }
@@ -389,47 +389,47 @@ async function getRelatedData(userData: any) {
     const db = admin.firestore();
 
     // Obtener área
-    let areaNombre = 'No especificada';
+    let areaNombre = "No especificada";
     if (userData.areaId) {
       try {
-        const areaDoc = await db.collection('areas').doc(userData.areaId).get();
+        const areaDoc = await db.collection("areas").doc(userData.areaId).get();
         if (areaDoc.exists) {
-          areaNombre = areaDoc.data()?.nombre || 'No especificada';
+          areaNombre = areaDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo área:', error);
+        console.log("Error obteniendo área:", error);
       }
     }
 
     // Obtener función
-    let funcionNombre = 'No especificada';
+    let funcionNombre = "No especificada";
     if (userData.funcion) {
       try {
         const funcionDoc = await db
-          .collection('funciones')
+          .collection("funciones")
           .doc(userData.funcion)
           .get();
         if (funcionDoc.exists) {
-          funcionNombre = funcionDoc.data()?.nombre || 'No especificada';
+          funcionNombre = funcionDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo función:', error);
+        console.log("Error obteniendo función:", error);
       }
     }
 
     // Obtener empresa
-    let empresaNombre = 'No especificada';
+    let empresaNombre = "No especificada";
     if (userData.empresaId) {
       try {
         const empresaDoc = await db
-          .collection('empresas')
+          .collection("empresas")
           .doc(userData.empresaId)
           .get();
         if (empresaDoc.exists) {
-          empresaNombre = empresaDoc.data()?.nombre || 'No especificada';
+          empresaNombre = empresaDoc.data()?.nombre || "No especificada";
         }
       } catch (error) {
-        console.log('Error obteniendo empresa:', error);
+        console.log("Error obteniendo empresa:", error);
       }
     }
 
@@ -443,10 +443,10 @@ async function getRelatedData(userData: any) {
     try {
       const rtdb = admin.database();
       const jornadaSnapshot = await rtdb
-        .ref('jornada_activa')
-        .orderByChild('activo')
+        .ref("jornada_activa")
+        .orderByChild("activo")
         .equalTo(true)
-        .once('value');
+        .once("value");
 
       const jornadas = jornadaSnapshot.val();
       if (jornadas) {
@@ -459,7 +459,7 @@ async function getRelatedData(userData: any) {
           jornadaData.equipo_local &&
           jornadaData.equipo_visitante
         ) {
-          console.log('Obteniendo URLs de escudos para:', {
+          console.log("Obteniendo URLs de escudos para:", {
             local: jornadaData.equipo_local,
             visitante: jornadaData.equipo_visitante,
           });
@@ -472,23 +472,23 @@ async function getRelatedData(userData: any) {
           // Obtener URLs solo si faltan buffers (fallback)
           if (!escudoLocalBuffer || !escudoVisitanteBuffer) {
             [escudoLocalUrl, escudoVisitanteUrl] = await Promise.all([
-              !escudoLocalBuffer
-                ? getEscudoUrl(jornadaData.equipo_local)
-                : Promise.resolve(null),
-              !escudoVisitanteBuffer
-                ? getEscudoUrl(jornadaData.equipo_visitante)
-                : Promise.resolve(null),
+              !escudoLocalBuffer ?
+                getEscudoUrl(jornadaData.equipo_local) :
+                Promise.resolve(null),
+              !escudoVisitanteBuffer ?
+                getEscudoUrl(jornadaData.equipo_visitante) :
+                Promise.resolve(null),
             ]);
           }
 
-          console.log('URLs obtenidas:', {
+          console.log("URLs obtenidas:", {
             local: escudoLocalUrl,
             visitante: escudoVisitanteUrl,
           });
         }
       }
     } catch (error) {
-      console.log('Error obteniendo jornada activa:', error);
+      console.log("Error obteniendo jornada activa:", error);
     }
 
     return {
@@ -502,11 +502,11 @@ async function getRelatedData(userData: any) {
       escudoVisitanteBuffer,
     };
   } catch (error) {
-    console.error('Error obteniendo datos relacionados:', error);
+    console.error("Error obteniendo datos relacionados:", error);
     return {
-      areaNombre: 'No especificada',
-      funcionNombre: 'No especificada',
-      empresaNombre: 'No especificada',
+      areaNombre: "No especificada",
+      funcionNombre: "No especificada",
+      empresaNombre: "No especificada",
       jornadaData: null,
       escudoLocalUrl: null,
       escudoVisitanteUrl: null,
@@ -521,8 +521,8 @@ async function getRelatedData(userData: any) {
  */
 async function generateQRCode(userId: string): Promise<string> {
   return await QRCode.toDataURL(userId, {
-    errorCorrectionLevel: 'H',
-    type: 'image/png',
+    errorCorrectionLevel: "H",
+    type: "image/png",
     width: 200,
     margin: 1,
   });
@@ -539,35 +539,35 @@ async function generatePDF(
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
-        size: 'LETTER',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        size: "LETTER",
+        margins: {top: 50, bottom: 50, left: 50, right: 50},
       });
 
       const chunks: Buffer[] = [];
-      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
 
       const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
       // Generar QR (debe ser async)
       generateQRCode(userId)
         .then(async (qrDataUrl) => {
-          const qrBase64 = qrDataUrl.split(',')[1];
-          const qrBuffer = Buffer.from(qrBase64, 'base64');
+          const qrBase64 = qrDataUrl.split(",")[1];
+          const qrBuffer = Buffer.from(qrBase64, "base64");
 
           const pageWidth = doc.page.width;
           const margin = 50;
           const contentWidth = pageWidth - margin * 2;
           const colors = {
-            primary: '#0B5E3B',
-            text: '#111827',
-            muted: '#6B7280',
-            border: '#E5E7EB',
-            surface: '#F9FAFB',
-            alert: '#B91C1C',
-            alertSurface: '#FEF2F2',
-            alertBorder: '#FCA5A5',
+            primary: "#0B5E3B",
+            text: "#111827",
+            muted: "#6B7280",
+            border: "#E5E7EB",
+            surface: "#F9FAFB",
+            alert: "#B91C1C",
+            alertSurface: "#FEF2F2",
+            alertBorder: "#FCA5A5",
           };
 
           const drawSection = (
@@ -581,7 +581,7 @@ async function generatePDF(
             const startY = y;
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.primary)
               .text(title, x + padding, y + padding, {
                 width: width - padding * 2,
@@ -599,12 +599,12 @@ async function generatePDF(
             rows.forEach((row) => {
               doc
                 .fontSize(10)
-                .font('Helvetica-Bold')
+                .font("Helvetica-Bold")
                 .fillColor(colors.text)
                 .text(`${row.label}: `, x + padding, currentY, {
                   continued: true,
                 });
-              doc.font('Helvetica').text(row.value, {
+              doc.font("Helvetica").text(row.value, {
                 width: width - padding * 2,
               });
               currentY = doc.y + 4;
@@ -626,19 +626,19 @@ async function generatePDF(
             .fill(colors.primary);
           doc
             .fontSize(20)
-            .font('Helvetica-Bold')
-            .fillColor('white')
-            .text('CONSTANCIA UNICA DE ACREDITACION', margin, margin + 8, {
+            .font("Helvetica-Bold")
+            .fillColor("white")
+            .text("ACCESO ESTACIONAMIENTO", margin, margin + 8, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
           doc
             .fontSize(10)
-            .font('Helvetica')
-            .fillColor('white')
-            .text('Sistema de Accesos - Club Leon', margin, margin + 38, {
+            .font("Helvetica")
+            .fillColor("white")
+            .text("Sistema de Accesos - Club Leon", margin, margin + 38, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
 
           const contentTop = margin + 80;
@@ -651,12 +651,12 @@ async function generatePDF(
           // Seccion izquierda: datos del acreditado
           let leftY = contentTop;
           leftY = drawSection(
-            'DATOS DEL ACREDITADO',
+            "DATOS DEL ACREDITADO",
             [
-              { label: 'Nombre', value: fullName },
-              { label: 'Pulsera', value: relatedData.areaNombre },
-              { label: 'Función', value: relatedData.funcionNombre },
-              { label: 'Empresa', value: relatedData.empresaNombre },
+              {label: "Nombre", value: fullName},
+              {label: "Pulsera", value: relatedData.areaNombre},
+              {label: "Función", value: relatedData.funcionNombre},
+              {label: "Empresa", value: relatedData.empresaNombre},
             ],
             leftX,
             leftY,
@@ -673,9 +673,9 @@ async function generatePDF(
             // Título de la sección
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.primary)
-              .text('DATOS DE LA JORNADA', leftX + padding, leftY + padding, {
+              .text("DATOS DE LA JORNADA", leftX + padding, leftY + padding, {
                 width: leftWidth - padding * 2,
               });
 
@@ -692,20 +692,20 @@ async function generatePDF(
             // Jornada
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Jornada: ', leftX + padding, currentY, {
+              .text("Jornada: ", leftX + padding, currentY, {
                 continued: true,
               });
-            doc.font('Helvetica').text(relatedData.jornadaData.jornada);
+            doc.font("Helvetica").text(relatedData.jornadaData.jornada);
             currentY = doc.y + 6;
 
             // Partido con escudos
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Partido:', leftX + padding, currentY);
+              .text("Partido:", leftX + padding, currentY);
             currentY = doc.y + 6;
 
             // Escudos y equipos en línea horizontal
@@ -733,23 +733,23 @@ async function generatePDF(
               );
             }
 
-            console.log('Escudos descargados para PDF:', {
-              local: escudoLocalBuffer
-                ? `${escudoLocalBuffer.length} bytes`
-                : 'null',
-              visitante: escudoVisitanteBuffer
-                ? `${escudoVisitanteBuffer.length} bytes`
-                : 'null',
+            console.log("Escudos descargados para PDF:", {
+              local: escudoLocalBuffer ?
+                `${escudoLocalBuffer.length} bytes` :
+                "null",
+              visitante: escudoVisitanteBuffer ?
+                `${escudoVisitanteBuffer.length} bytes` :
+                "null",
             });
 
-            console.log('Insertando escudos en PDF:', {
+            console.log("Insertando escudos en PDF:", {
               tieneEscudoLocal: !!escudoLocalBuffer,
               tieneEscudoVisitante: !!escudoVisitanteBuffer,
             });
 
             // Escudo local - posicionado simétricamente a la izquierda del VS
             if (escudoLocalBuffer) {
-              console.log('Insertando escudo local en PDF');
+              console.log("Insertando escudo local en PDF");
               const escudoLocalX = centerX - vsWidth / 2 - spacing - escudoSize;
               doc.image(escudoLocalBuffer, escudoLocalX, escudosY, {
                 width: escudoSize,
@@ -757,22 +757,22 @@ async function generatePDF(
                 fit: [escudoSize, escudoSize],
               });
             } else {
-              console.log('No hay buffer de escudo local');
+              console.log("No hay buffer de escudo local");
             }
 
             // VS en el centro
             doc
               .fontSize(11)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.muted)
-              .text('VS', centerX - vsWidth / 2, escudosY + 10, {
+              .text("VS", centerX - vsWidth / 2, escudosY + 10, {
                 width: vsWidth,
-                align: 'center',
+                align: "center",
               });
 
             // Escudo visitante - posicionado simétricamente a la derecha del VS
             if (escudoVisitanteBuffer) {
-              console.log('Insertando escudo visitante en PDF');
+              console.log("Insertando escudo visitante en PDF");
               const escudoVisitanteX = centerX + vsWidth / 2 + spacing;
               doc.image(escudoVisitanteBuffer, escudoVisitanteX, escudosY, {
                 width: escudoSize,
@@ -780,7 +780,7 @@ async function generatePDF(
                 fit: [escudoSize, escudoSize],
               });
             } else {
-              console.log('No hay buffer de escudo visitante');
+              console.log("No hay buffer de escudo visitante");
             }
 
             currentY = escudosY + escudoSize + 6;
@@ -788,42 +788,42 @@ async function generatePDF(
             // Nombres de los equipos centrados
             doc
               .fontSize(9)
-              .font('Helvetica')
+              .font("Helvetica")
               .fillColor(colors.text)
               .text(
                 `${relatedData.jornadaData.equipo_local} vs ` +
                   `${relatedData.jornadaData.equipo_visitante}`,
                 leftX + padding,
                 currentY,
-                { width: leftWidth - padding * 2, align: 'center' }
+                {width: leftWidth - padding * 2, align: "center"}
               );
             currentY = doc.y + 6;
 
             // Fecha, Hora, Estadio
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Fecha: ', leftX + padding, currentY, { continued: true });
-            doc.font('Helvetica').text(relatedData.jornadaData.fecha);
+              .text("Fecha: ", leftX + padding, currentY, {continued: true});
+            doc.font("Helvetica").text(relatedData.jornadaData.fecha);
             currentY = doc.y + 4;
 
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Hora: ', leftX + padding, currentY, { continued: true });
-            doc.font('Helvetica').text(relatedData.jornadaData.hora);
+              .text("Hora: ", leftX + padding, currentY, {continued: true});
+            doc.font("Helvetica").text(relatedData.jornadaData.hora);
             currentY = doc.y + 4;
 
             doc
               .fontSize(10)
-              .font('Helvetica-Bold')
+              .font("Helvetica-Bold")
               .fillColor(colors.text)
-              .text('Estadio: ', leftX + padding, currentY, {
+              .text("Estadio: ", leftX + padding, currentY, {
                 continued: true,
               });
-            doc.font('Helvetica').text(relatedData.jornadaData.estadio);
+            doc.font("Helvetica").text(relatedData.jornadaData.estadio);
             currentY = doc.y + padding;
 
             // Dibujar el borde de la sección
@@ -844,10 +844,10 @@ async function generatePDF(
           } else {
             // Si no hay jornada activa
             const jornadaRows = [
-              { label: 'Estado', value: 'No hay jornada activa disponible' },
+              {label: "Estado", value: "No hay jornada activa disponible"},
             ];
             leftY = drawSection(
-              'DATOS DE LA JORNADA',
+              "DATOS DE LA JORNADA",
               jornadaRows,
               leftX,
               leftY,
@@ -862,28 +862,28 @@ async function generatePDF(
             .fillAndStroke(colors.surface, colors.border);
           doc
             .fontSize(11)
-            .font('Helvetica-Bold')
+            .font("Helvetica-Bold")
             .fillColor(colors.primary)
-            .text('CODIGO QR DE ACCESO', rightX + 10, contentTop + 10, {
+            .text("CODIGO QR DE ACCESO", rightX + 10, contentTop + 10, {
               width: rightWidth - 20,
-              align: 'center',
+              align: "center",
             });
 
           const qrSize = 170;
           const qrX = rightX + (rightWidth - qrSize) / 2;
           const qrY = contentTop + 40;
-          doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+          doc.image(qrBuffer, qrX, qrY, {width: qrSize, height: qrSize});
           doc
             .fontSize(9)
-            .font('Helvetica')
+            .font("Helvetica")
             .fillColor(colors.muted)
             .text(
-              'Presentar este codigo junto con identificacion oficial.',
+              "Presentar este codigo junto con identificacion oficial.",
               rightX + 10,
               qrY + qrSize + 8,
               {
                 width: rightWidth - 20,
-                align: 'center',
+                align: "center",
               }
             );
 
@@ -894,30 +894,30 @@ async function generatePDF(
             .fillAndStroke(colors.alertSurface, colors.alertBorder);
           doc
             .fontSize(12)
-            .font('Helvetica-Bold')
+            .font("Helvetica-Bold")
             .fillColor(colors.alert)
-            .text('AVISO IMPORTANTE', margin, afterColumnsY + 10, {
+            .text("AVISO IMPORTANTE", margin, afterColumnsY + 10, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
 
           const avisos = [
-            'El presente QR no garantiza el acceso al estadio.',
-            'Para ingresar es indispensable contar con pulsera y ' +
-              'realizar el proceso en el area de acreditacion.',
-            'Este QR:',
-            'No es un boleto.',
-            'No asegura lugar en tribuna.',
-            'Requiere la presentacion de identificacion oficial vigente.',
-            'Es valido unicamente para el partido del dia.',
-            'Es intransferible.',
-            'No valido para menores de edad.',
+            "El presente QR no garantiza el acceso al estadio.",
+            "Para ingresar es indispensable contar con pulsera y " +
+              "realizar el proceso en el area de acreditacion.",
+            "Este QR:",
+            "No es un boleto.",
+            "No asegura lugar en tribuna.",
+            "Requiere la presentacion de identificacion oficial vigente.",
+            "Es valido unicamente para el partido del dia.",
+            "Es intransferible.",
+            "No valido para menores de edad.",
           ];
 
           let avisoY = afterColumnsY + 38;
-          doc.fontSize(9).font('Helvetica').fillColor(colors.text);
+          doc.fontSize(9).font("Helvetica").fillColor(colors.text);
           avisos.forEach((aviso) => {
-            const prefix = aviso === 'Este QR:' ? '' : '- ';
+            const prefix = aviso === "Este QR:" ? "" : "- ";
             doc.text(`${prefix}${aviso}`, margin + 16, avisoY, {
               width: contentWidth - 32,
             });
@@ -928,17 +928,17 @@ async function generatePDF(
           doc
             .fontSize(8)
             .fillColor(colors.muted)
-            .text('Sistema de Accesos - Club Leon', margin, avisoY + 14, {
+            .text("Sistema de Accesos - Club Leon", margin, avisoY + 14, {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             });
           doc.text(
-            `Generado: ${new Date().toLocaleString('es-MX')}`,
+            `Generado: ${new Date().toLocaleString("es-MX")}`,
             margin,
             doc.y,
             {
               width: contentWidth,
-              align: 'center',
+              align: "center",
             }
           );
 
@@ -966,7 +966,7 @@ async function uploadPDFToStorage(
 
     await file.save(pdfBuffer, {
       metadata: {
-        contentType: 'application/pdf',
+        contentType: "application/pdf",
       },
     });
 
@@ -974,10 +974,10 @@ async function uploadPDFToStorage(
     await file.makePublic();
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
-    console.log('PDF subido a Storage:', publicUrl);
+    console.log("PDF subido a Storage:", publicUrl);
     return publicUrl;
   } catch (error) {
-    console.error('Error subiendo PDF a Storage:', error);
+    console.error("Error subiendo PDF a Storage:", error);
     throw error;
   }
 }
@@ -998,13 +998,13 @@ async function sendEmailNotification(
 
     if (!BREVO_API_KEY) {
       console.error(
-        '[EMAIL-ERROR] API Key de Brevo no configurada',
+        "[EMAIL-ERROR] API Key de Brevo no configurada",
         `userId: ${userId}`
       );
-      throw new Error('Brevo API Key no configurada');
+      throw new Error("Brevo API Key no configurada");
     }
 
-    const isApproved = userData.estatus === 'aprobado';
+    const isApproved = userData.estatus === "aprobado";
     const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
     console.log(
@@ -1015,31 +1015,31 @@ async function sendEmailNotification(
     if (!isApproved) {
       // Para rechazados, solo enviar correo simple sin PDF
       console.log(
-        '[EMAIL-REJECT] Enviando correo de rechazo',
-        '- userId:',
+        "[EMAIL-REJECT] Enviando correo de rechazo",
+        "- userId:",
         userId
       );
       await sendRejectionEmail(userData, fullName, BREVO_API_KEY);
       console.log(
-        '[EMAIL-SUCCESS] Correo de rechazo enviado',
-        '- userId:',
+        "[EMAIL-SUCCESS] Correo de rechazo enviado",
+        "- userId:",
         userId,
-        'tiempo:',
+        "tiempo:",
         `${Date.now() - startTime}ms`
       );
       return;
     }
 
     // Obtener datos relacionados
-    console.log('Obteniendo datos relacionados...');
+    console.log("Obteniendo datos relacionados...");
     const relatedData = await getRelatedData(userData);
 
     // Generar PDF
-    console.log('Generando PDF...');
+    console.log("Generando PDF...");
     const pdfBuffer = await generatePDF(userData, relatedData, userId);
 
     // Subir PDF a Storage
-    console.log('Subiendo PDF a Storage...');
+    console.log("Subiendo PDF a Storage...");
     const fileName = `acreditacion_${Date.now()}.pdf`;
     const pdfUrl = await uploadPDFToStorage(pdfBuffer, userId, fileName);
 
@@ -1052,15 +1052,15 @@ async function sendEmailNotification(
     }
 
     // Preparar correo con PDF adjunto
-    const pdfBase64 = pdfBuffer.toString('base64');
+    const pdfBase64 = pdfBuffer.toString("base64");
 
     const payload: BrevoPayload = {
       sender: {
-        email: 'sistemasleonfc@gmail.com',
-        name: 'FUERZA DEPORTIVA DEL LEON',
+        email: "sistemasleonfc@gmail.com",
+        name: "FUERZA DEPORTIVA DEL LEON",
       },
-      to: [{ email: userData.email, name: fullName }],
-      subject: '✅ Constancia de Acreditación - Club León',
+      to: [{email: userData.email, name: fullName}],
+      subject: "✅ Constancia de Acreditación - Club León",
       htmlContent: getApprovalEmailTemplate(fullName, pdfUrl),
       attachment: [
         {
@@ -1071,23 +1071,23 @@ async function sendEmailNotification(
     };
 
     console.log(
-      '[EMAIL-SENDING] Enviando correo con PDF adjunto',
-      '- userId:',
+      "[EMAIL-SENDING] Enviando correo con PDF adjunto",
+      "- userId:",
       userId
     );
     const response = await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
+      "https://api.brevo.com/v3/smtp/email",
       payload,
       {
         headers: {
-          'api-key': BREVO_API_KEY,
-          'Content-Type': 'application/json',
+          "api-key": BREVO_API_KEY,
+          "Content-Type": "application/json",
         },
       }
     );
 
     const elapsed = Date.now() - startTime;
-    console.log('[EMAIL-SUCCESS] ✅ Correo enviado exitosamente:', {
+    console.log("[EMAIL-SUCCESS] ✅ Correo enviado exitosamente:", {
       userId: userId,
       to: userData.email,
       status: response.status,
@@ -1103,15 +1103,15 @@ async function sendEmailNotification(
         emailMessageId: response.data?.messageId || null,
       });
       console.log(
-        '[EMAIL-FIRESTORE] Documento actualizado',
-        '- userId:',
+        "[EMAIL-FIRESTORE] Documento actualizado",
+        "- userId:",
         userId
       );
     }
   } catch (error) {
     const err = error as { message: string; response?: any };
     const elapsed = Date.now() - startTime;
-    console.error('[EMAIL-ERROR] ❌ Error en proceso de envío:', {
+    console.error("[EMAIL-ERROR] ❌ Error en proceso de envío:", {
       userId: userId,
       email: userData.email,
       error: err.message,
@@ -1126,8 +1126,8 @@ async function sendEmailNotification(
         emailErrorAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       console.log(
-        '[EMAIL-FIRESTORE] Error registrado en documento',
-        '- userId:',
+        "[EMAIL-FIRESTORE] Error registrado en documento",
+        "- userId:",
         userId
       );
     }
@@ -1148,16 +1148,16 @@ async function resendWithExistingPDF(
   const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
   if (!BREVO_API_KEY) {
-    throw new Error('Brevo API Key no configurada');
+    throw new Error("Brevo API Key no configurada");
   }
 
   const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
 
   console.log(
-    '[RESEND-EXISTING] Preparando reenvío con PDF existente',
-    '- userId:',
+    "[RESEND-EXISTING] Preparando reenvío con PDF existente",
+    "- userId:",
     userId,
-    '- email:',
+    "- email:",
     userData.email
   );
 
@@ -1166,20 +1166,20 @@ async function resendWithExistingPDF(
   const pdfPath = pdfUrl.split(`${bucket.name}/`)[1];
 
   if (!pdfPath) {
-    throw new Error('No se pudo extraer la ruta del PDF');
+    throw new Error("No se pudo extraer la ruta del PDF");
   }
 
   const file = bucket.file(pdfPath);
   const [pdfBuffer] = await file.download();
-  const pdfBase64 = pdfBuffer.toString('base64');
+  const pdfBase64 = pdfBuffer.toString("base64");
 
   const payload: BrevoPayload = {
     sender: {
-      email: 'sistemasleonfc@gmail.com',
-      name: 'FUERZA DEPORTIVA DEL LEON',
+      email: "sistemasleonfc@gmail.com",
+      name: "FUERZA DEPORTIVA DEL LEON",
     },
-    to: [{ email: userData.email, name: fullName }],
-    subject: '✅ Constancia de Acreditación - Club León',
+    to: [{email: userData.email, name: fullName}],
+    subject: "✅ Constancia de Acreditación - Club León",
     htmlContent: getApprovalEmailTemplate(fullName, pdfUrl),
     attachment: [
       {
@@ -1190,25 +1190,25 @@ async function resendWithExistingPDF(
   };
 
   console.log(
-    '[RESEND-EXISTING] Enviando correo...',
-    '- email:',
+    "[RESEND-EXISTING] Enviando correo...",
+    "- email:",
     userData.email
   );
 
   const response = await axios.post(
-    'https://api.brevo.com/v3/smtp/email',
+    "https://api.brevo.com/v3/smtp/email",
     payload,
     {
       headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json',
+        "api-key": BREVO_API_KEY,
+        "Content-Type": "application/json",
       },
     }
   );
 
   console.log(
-    '[RESEND-EXISTING] ✅ Correo reenviado',
-    '- messageId:',
+    "[RESEND-EXISTING] ✅ Correo reenviado",
+    "- messageId:",
     response.data?.messageId
   );
 }
@@ -1222,36 +1222,36 @@ async function sendRejectionEmail(
   apiKey: string
 ) {
   console.log(
-    '[REJECT-EMAIL] Preparando correo de rechazo',
-    'para:',
+    "[REJECT-EMAIL] Preparando correo de rechazo",
+    "para:",
     userData.email
   );
 
   const payload: BrevoPayload = {
     sender: {
-      email: 'sistemasleonfc@gmail.com',
-      name: 'FUERZA DEPORTIVA DEL LEON',
+      email: "sistemasleonfc@gmail.com",
+      name: "FUERZA DEPORTIVA DEL LEON",
     },
-    to: [{ email: userData.email, name: fullName }],
-    subject: '❌ Solicitud de Acceso Rechazada',
+    to: [{email: userData.email, name: fullName}],
+    subject: "❌ Solicitud de Acceso Rechazada",
     htmlContent: getRejectionEmailTemplate(fullName),
   };
 
-  console.log('[REJECT-EMAIL] Enviando a Brevo API...');
+  console.log("[REJECT-EMAIL] Enviando a Brevo API...");
   const response = await axios.post(
-    'https://api.brevo.com/v3/smtp/email',
+    "https://api.brevo.com/v3/smtp/email",
     payload,
     {
       headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
+        "api-key": apiKey,
+        "Content-Type": "application/json",
       },
     }
   );
 
   console.log(
-    '[REJECT-EMAIL] ✅ Correo de rechazo enviado',
-    'messageId:',
+    "[REJECT-EMAIL] ✅ Correo de rechazo enviado",
+    "messageId:",
     response.data?.messageId
   );
   return response;
@@ -1399,6 +1399,762 @@ ha sido <strong>rechazada</strong>.</p>
 <p>Para más información sobre los motivos del rechazo, 
 por favor contacte al administrador del sistema de acreditaciones.</p>
 <p>Gracias por su comprensión.</p>
+</div>
+<div class="footer">
+<p><strong>Sistema de Accesos - Club León</strong></p>
+<p>Este es un correo automático, por favor no responder.</p>
+</div>
+</div>
+</body>
+</html>`;
+}
+
+/**
+ * =============================================================================
+ * FUNCIONES PARA VISITAS DE AUTOS
+ * =============================================================================
+ */
+
+/**
+ * Cloud Function para generar PDF de visita y enviar por correo
+ */
+export const generateVisitaPDF = onCall(
+  {
+    secrets: ["BREVO_API_KEY"],
+    maxInstances: 20,
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async (request) => {
+    console.log("[VISITA-PDF] Iniciando generación de PDF");
+
+    try {
+      const {visitaId, visitaData} = request.data;
+
+      if (!visitaId || !visitaData) {
+        throw new HttpsError("invalid-argument", "Datos incompletos");
+      }
+
+      console.log("[VISITA-PDF] Generando PDF para visitaId:", visitaId);
+
+      // Generar QR code
+      const qrCodeDataUrl = await QRCode.toDataURL(visitaId, {
+        errorCorrectionLevel: "H",
+        type: "image/png",
+        width: 200,
+        margin: 1,
+      });
+
+      // Generar PDF
+      const pdfBuffer = await generateVisitaPDFBuffer(
+        visitaData,
+        visitaId,
+        qrCodeDataUrl
+      );
+
+      // Subir PDF a Storage
+      const bucket = admin.storage().bucket();
+      const fileName = `visita_${visitaId}_${Date.now()}.pdf`;
+      const filePath = `visitas/${visitaId}/${fileName}`;
+      const file = bucket.file(filePath);
+
+      await file.save(pdfBuffer, {
+        metadata: {
+          contentType: "application/pdf",
+        },
+      });
+
+      await file.makePublic();
+      const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+      console.log("[VISITA-PDF] PDF subido a:", pdfUrl);
+
+      // Guardar URL en Realtime Database
+      const db = admin.database();
+      await db.ref(`visitas/${visitaId}`).update({pdfUrl});
+
+      // Enviar correo
+      await sendVisitaEmail(visitaData, pdfBuffer, fileName, pdfUrl);
+
+      console.log("[VISITA-PDF] ✅ Proceso completado exitosamente");
+
+      return {
+        success: true,
+        pdfUrl,
+        message: "PDF generado y correo enviado exitosamente",
+      };
+    } catch (error) {
+      const err = error as Error;
+      console.error("[VISITA-PDF] ❌ Error:", err.message);
+      throw new HttpsError("internal", `Error: ${err.message}`);
+    }
+  }
+);
+
+/**
+ * Cloud Function para reenviar correo de visita
+ */
+export const resendVisitaEmail = onCall(
+  {
+    secrets: ["BREVO_API_KEY"],
+    maxInstances: 20,
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async (request) => {
+    console.log("[VISITA-RESEND] Iniciando reenvío");
+
+    try {
+      const {visitaId} = request.data;
+
+      if (!visitaId) {
+        throw new HttpsError("invalid-argument", "visitaId es requerido");
+      }
+
+      // Obtener datos de Realtime Database
+      const db = admin.database();
+      const snapshot = await db.ref(`visitas/${visitaId}`).get();
+
+      if (!snapshot.exists()) {
+        throw new HttpsError("not-found", "Visita no encontrada");
+      }
+
+      const visitaData = snapshot.val();
+
+      if (!visitaData.pdfUrl) {
+        throw new HttpsError("not-found", "PDF no disponible");
+      }
+
+      // Descargar PDF existente
+      const bucket = admin.storage().bucket();
+      const pdfPath = visitaData.pdfUrl.split(`${bucket.name}/`)[1];
+      const file = bucket.file(pdfPath);
+      const [pdfBuffer] = await file.download();
+
+      const fileName = `visita_${visitaData.nombre}.pdf`;
+
+      // Reenviar correo
+      await sendVisitaEmail(visitaData, pdfBuffer, fileName, visitaData.pdfUrl);
+
+      console.log("[VISITA-RESEND] ✅ Correo reenviado exitosamente");
+
+      return {
+        success: true,
+        message: "Correo reenviado exitosamente",
+      };
+    } catch (error) {
+      const err = error as Error;
+      console.error("[VISITA-RESEND] ❌ Error:", err.message);
+      throw new HttpsError("internal", `Error: ${err.message}`);
+    }
+  }
+);
+
+/**
+ * Genera el PDF de visita
+ */
+function generateVisitaPDFBuffer(
+  visitaData: any,
+  visitaId: string,
+  qrCodeDataUrl: string
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        const doc = new PDFDocument({
+          size: "LETTER",
+          margins: {top: 50, bottom: 50, left: 50, right: 50},
+        });
+
+        const chunks: Buffer[] = [];
+        doc.on("data", (chunk) => chunks.push(chunk));
+        doc.on("end", () => resolve(Buffer.concat(chunks)));
+        doc.on("error", reject);
+
+        const colors = {
+          primary: "#007A53",
+          text: "#111111",
+          muted: "#6B7280",
+          border: "#E0E0E0",
+        };
+        const pageWidth = doc.page.width;
+        const margin = 40;
+        const contentWidth = pageWidth - margin * 2;
+        const safeText = (value: any) =>
+          value === null || value === undefined || value === "" ?
+            "-" :
+            String(value);
+
+        // Header
+        const headerHeight = 70;
+        const headerY = 20;
+        doc
+          .roundedRect(margin, headerY, contentWidth, headerHeight, 10)
+          .fillColor(colors.primary)
+          .fill();
+
+        doc
+          .fillColor("#FFFFFF")
+          .fontSize(22)
+          .font("Helvetica-Bold")
+          .text("ACCESO ESTACIONAMIENTO", margin, headerY + 16, {
+            align: "center",
+            width: contentWidth,
+          });
+
+        doc
+          .fontSize(11)
+          .font("Helvetica")
+          .text("Sistema de Accesos - Club Leon", margin, headerY + 42, {
+            align: "center",
+            width: contentWidth,
+          });
+
+        let yPosition = headerY + headerHeight + 24;
+
+        // Extraer jornada (formato: "Jornada X: equipo1 vs equipo2...")
+        let jornadaNumero = "";
+        let equipoLocal = "";
+        let equipoVisitante = "";
+
+        if (visitaData.partido) {
+          const matchJornada = visitaData.partido.match(
+            /Jornada (\d+):\s*([^v]+)\s*vs\s*([^(]+)/
+          );
+          if (matchJornada) {
+            jornadaNumero = matchJornada[1];
+            equipoLocal = matchJornada[2].trim();
+            equipoVisitante = matchJornada[3].trim();
+          }
+        }
+
+        // Layout de dos columnas
+        const columnGap = 16;
+        const columnWidth = (contentWidth - columnGap) / 2;
+        const leftColumnX = margin;
+        const rightColumnX = margin + columnWidth + columnGap;
+        const labelWidth = 70;
+
+        const drawCard = (
+          title: string,
+          rows: Array<{ label: string; value: string }>,
+          x: number,
+          y: number,
+          width: number
+        ) => {
+          const padding = 12;
+          const rowGap = 6;
+          const titleFontSize = 12;
+          const bodyFontSize = 10;
+
+          doc
+            .fontSize(titleFontSize)
+            .font("Helvetica-Bold")
+            .fillColor(colors.primary)
+            .text(title, x + padding, y + padding, {
+              width: width - padding * 2,
+            });
+
+          let currentY = doc.y + 6;
+          doc
+            .strokeColor(colors.border)
+            .lineWidth(1)
+            .moveTo(x + padding, currentY)
+            .lineTo(x + width - padding, currentY)
+            .stroke();
+          currentY += 8;
+
+          rows.forEach((row) => {
+            const valueText = safeText(row.value);
+            doc
+              .fontSize(bodyFontSize)
+              .font("Helvetica-Bold")
+              .fillColor(colors.text);
+            const labelHeight = doc.heightOfString(`${row.label}:`, {
+              width: labelWidth,
+            });
+            doc.text(`${row.label}:`, x + padding, currentY, {
+              width: labelWidth,
+            });
+
+            doc.font("Helvetica").fontSize(bodyFontSize).fillColor(colors.text);
+            const valueHeight = doc.heightOfString(valueText, {
+              width: width - padding * 2 - labelWidth,
+            });
+            doc.text(valueText, x + padding + labelWidth, currentY, {
+              width: width - padding * 2 - labelWidth,
+            });
+
+            currentY += Math.max(labelHeight, valueHeight) + rowGap;
+          });
+
+          if (rows.length === 0) {
+            currentY += padding;
+          } else {
+            currentY += padding - rowGap;
+          }
+
+          const cardHeight = currentY - y;
+          doc
+            .roundedRect(x, y, width, cardHeight, 8)
+            .strokeColor(colors.border)
+            .lineWidth(1)
+            .stroke();
+
+          return y + cardHeight;
+        };
+
+        const drawQRCodeCard = (
+          title: string,
+          x: number,
+          y: number,
+          width: number
+        ) => {
+          const padding = 12;
+          const titleFontSize = 12;
+          const bodyFontSize = 9;
+          const qrSize = Math.min(140, width - padding * 2);
+          const qrImageData = qrCodeDataUrl.split(",")[1];
+          const qrBuffer = Buffer.from(qrImageData, "base64");
+          const caption =
+            "Presentar este codigo junto con identificacion oficial.";
+
+          doc
+            .fontSize(titleFontSize)
+            .font("Helvetica-Bold")
+            .fillColor(colors.primary)
+            .text(title, x + padding, y + padding, {
+              width: width - padding * 2,
+              align: "center",
+            });
+
+          let currentY = doc.y + 6;
+          doc
+            .strokeColor(colors.border)
+            .lineWidth(1)
+            .moveTo(x + padding, currentY)
+            .lineTo(x + width - padding, currentY)
+            .stroke();
+          currentY += 8;
+
+          const qrX = x + (width - qrSize) / 2;
+          doc.image(qrBuffer, qrX, currentY, {width: qrSize, height: qrSize});
+          currentY += qrSize + 8;
+
+          doc
+            .fontSize(bodyFontSize)
+            .font("Helvetica")
+            .fillColor(colors.muted)
+            .text(caption, x + padding, currentY, {
+              width: width - padding * 2,
+              align: "center",
+            });
+          currentY += doc.heightOfString(caption, {
+            width: width - padding * 2,
+          });
+          currentY += padding;
+
+          const cardHeight = currentY - y;
+          doc
+            .roundedRect(x, y, width, cardHeight, 8)
+            .strokeColor(colors.border)
+            .lineWidth(1)
+            .stroke();
+
+          return y + cardHeight;
+        };
+
+        const leftEndY = drawCard(
+          "DATOS DEL VISITANTE",
+          [
+            {label: "Nombre", value: safeText(visitaData.nombre)},
+            {label: "Modelo", value: safeText(visitaData.carroModelo)},
+            {label: "Color", value: safeText(visitaData.color)},
+            {label: "Placas", value: safeText(visitaData.placas)},
+          ],
+          leftColumnX,
+          yPosition,
+          columnWidth
+        );
+
+        const rightEndY = drawQRCodeCard(
+          "CODIGO QR DE ACCESO",
+          rightColumnX,
+          yPosition,
+          columnWidth
+        );
+
+        yPosition = Math.max(leftEndY, rightEndY) + 16;
+
+        // DATOS DE LA JORNADA
+        const jornadaX = margin;
+        const jornadaWidth = contentWidth;
+        const jornadaPadding = 12;
+        const jornadaTitleFont = 12;
+        const bodyFontSize = 10;
+        const rowGap = 6;
+
+        const drawLabeledValue = (
+          label: string,
+          value: string,
+          x: number,
+          y: number,
+          width: number
+        ) => {
+          doc
+            .fontSize(bodyFontSize)
+            .font("Helvetica-Bold")
+            .fillColor(colors.text);
+          const labelHeight = doc.heightOfString(`${label}:`, {
+            width: labelWidth,
+          });
+          doc.text(`${label}:`, x, y, {width: labelWidth});
+
+          doc.font("Helvetica").fontSize(bodyFontSize).fillColor(colors.text);
+          const valueHeight = doc.heightOfString(safeText(value), {
+            width: width - labelWidth,
+          });
+          doc.text(safeText(value), x + labelWidth, y, {
+            width: width - labelWidth,
+          });
+
+          return Math.max(labelHeight, valueHeight);
+        };
+
+        doc
+          .fontSize(jornadaTitleFont)
+          .font("Helvetica-Bold")
+          .fillColor(colors.primary)
+          .text(
+            "DATOS DE LA JORNADA",
+            jornadaX + jornadaPadding,
+            yPosition + 12,
+            {
+              width: jornadaWidth - jornadaPadding * 2,
+            }
+          );
+
+        let jornadaY = doc.y + 6;
+        doc
+          .strokeColor(colors.border)
+          .lineWidth(1)
+          .moveTo(jornadaX + jornadaPadding, jornadaY)
+          .lineTo(jornadaX + jornadaWidth - jornadaPadding, jornadaY)
+          .stroke();
+        jornadaY += 10;
+
+        if (jornadaNumero) {
+          jornadaY +=
+            drawLabeledValue(
+              "Jornada",
+              jornadaNumero,
+              jornadaX + jornadaPadding,
+              jornadaY,
+              jornadaWidth - jornadaPadding * 2
+            ) + rowGap;
+        }
+
+        doc
+          .fontSize(bodyFontSize)
+          .font("Helvetica-Bold")
+          .fillColor(colors.text)
+          .text("Partido:", jornadaX + jornadaPadding, jornadaY, {
+            width: labelWidth,
+          });
+        jornadaY += 18;
+
+        // Intentar cargar y mostrar escudos
+        let escudosLoaded = false;
+        if (equipoLocal && equipoVisitante) {
+          try {
+            let escudoLocalBuffer = await getEscudoBuffer(equipoLocal);
+            let escudoVisitanteBuffer = await getEscudoBuffer(equipoVisitante);
+
+            if (!escudoLocalBuffer || !escudoVisitanteBuffer) {
+              const [escudoLocalUrl, escudoVisitanteUrl] = await Promise.all([
+                !escudoLocalBuffer ? getEscudoUrl(equipoLocal) : null,
+                !escudoVisitanteBuffer ? getEscudoUrl(equipoVisitante) : null,
+              ]);
+
+              if (escudoLocalUrl && !escudoLocalBuffer) {
+                escudoLocalBuffer = await downloadImage(escudoLocalUrl);
+              }
+              if (escudoVisitanteUrl && !escudoVisitanteBuffer) {
+                escudoVisitanteBuffer = await downloadImage(escudoVisitanteUrl);
+              }
+            }
+
+            if (escudoLocalBuffer && escudoVisitanteBuffer) {
+              const escudoSize = 50;
+              const centerX = jornadaX + jornadaWidth / 2;
+              const vsWidth = 24;
+              const spacing = 16;
+              const escudoLocalX = centerX - vsWidth / 2 - spacing - escudoSize;
+              const escudoVisitanteX = centerX + vsWidth / 2 + spacing;
+
+              doc.image(escudoLocalBuffer, escudoLocalX, jornadaY, {
+                width: escudoSize,
+                height: escudoSize,
+              });
+              doc
+                .fillColor(colors.muted)
+                .fontSize(12)
+                .font("Helvetica-Bold")
+                .text("VS", centerX - vsWidth / 2, jornadaY + 16, {
+                  width: vsWidth,
+                  align: "center",
+                });
+              doc.image(escudoVisitanteBuffer, escudoVisitanteX, jornadaY, {
+                width: escudoSize,
+                height: escudoSize,
+              });
+
+              jornadaY += escudoSize + 8;
+              doc
+                .fillColor(colors.text)
+                .fontSize(10)
+                .font("Helvetica")
+                .text(
+                  `${equipoLocal} vs ${equipoVisitante}`,
+                  jornadaX + jornadaPadding,
+                  jornadaY,
+                  {
+                    align: "center",
+                    width: jornadaWidth - jornadaPadding * 2,
+                  }
+                );
+              jornadaY += 18;
+              escudosLoaded = true;
+            }
+          } catch (error) {
+            console.log("Error cargando escudos:", error);
+          }
+        }
+
+        // Si no se pudieron cargar los escudos, mostrar texto del partido
+        if (!escudosLoaded) {
+          doc
+            .fillColor(colors.text)
+            .fontSize(bodyFontSize)
+            .font("Helvetica")
+            .text(
+              safeText(visitaData.partido),
+              jornadaX + jornadaPadding,
+              jornadaY,
+              {
+                width: jornadaWidth - jornadaPadding * 2,
+              }
+            );
+          jornadaY +=
+            doc.heightOfString(safeText(visitaData.partido), {
+              width: jornadaWidth - jornadaPadding * 2,
+            }) + rowGap;
+        }
+
+        // Fecha y hora (extraer del campo partido si esta disponible)
+        const matchFechaHora = visitaData.partido?.match(
+          /\(([^)]+)\)\s*(\d{2}:\d{2})/
+        );
+        let fecha = visitaData.fechaPartido;
+        let hora = "";
+
+        if (matchFechaHora) {
+          fecha = matchFechaHora[1];
+          hora = matchFechaHora[2];
+        }
+
+        jornadaY +=
+          drawLabeledValue(
+            "Fecha",
+            safeText(fecha),
+            jornadaX + jornadaPadding,
+            jornadaY,
+            jornadaWidth - jornadaPadding * 2
+          ) + rowGap;
+
+        if (hora) {
+          jornadaY +=
+            drawLabeledValue(
+              "Hora",
+              hora,
+              jornadaX + jornadaPadding,
+              jornadaY,
+              jornadaWidth - jornadaPadding * 2
+            ) + rowGap;
+        }
+
+        jornadaY +=
+          drawLabeledValue(
+            "Estadio",
+            "Leon",
+            jornadaX + jornadaPadding,
+            jornadaY,
+            jornadaWidth - jornadaPadding * 2
+          ) + rowGap;
+
+        const jornadaHeight = jornadaY - yPosition + (jornadaPadding - rowGap);
+        doc
+          .roundedRect(jornadaX, yPosition, jornadaWidth, jornadaHeight, 8)
+          .strokeColor(colors.border)
+          .lineWidth(1)
+          .stroke();
+
+        // Footer
+        const footerY = doc.page.height - 40;
+        doc
+          .fillColor(colors.muted)
+          .fontSize(8)
+          .font("Helvetica")
+          .text(
+            "Documento generado - Sistema de Accesos Club Leon",
+            0,
+            footerY,
+            {
+              align: "center",
+              width: doc.page.width,
+            }
+          );
+
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    })();
+  });
+}
+
+/**
+ * Envía el correo con el PDF de visita
+ */
+async function sendVisitaEmail(
+  visitaData: any,
+  pdfBuffer: Buffer,
+  fileName: string,
+  pdfUrl: string
+): Promise<void> {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+  if (!BREVO_API_KEY) {
+    throw new Error("BREVO_API_KEY no configurada");
+  }
+
+  const pdfBase64 = pdfBuffer.toString("base64");
+
+  const payload: BrevoPayload = {
+    sender: {
+      email: "sistemasleonfc@gmail.com",
+      name: "FUERZA DEPORTIVA DEL LEON",
+    },
+    to: [{email: visitaData.correo, name: visitaData.nombre}],
+    subject: "🚗 Pase de Visita - Club León",
+    htmlContent: getVisitaEmailTemplate(visitaData.nombre, pdfUrl),
+    attachment: [
+      {
+        content: pdfBase64,
+        name: fileName,
+      },
+    ],
+  };
+
+  console.log("[VISITA-EMAIL] Enviando correo a:", visitaData.correo);
+
+  const response = await axios.post(
+    "https://api.brevo.com/v3/smtp/email",
+    payload,
+    {
+      headers: {
+        "api-key": BREVO_API_KEY,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  console.log(
+    "[VISITA-EMAIL] ✅ Correo enviado. MessageId:",
+    response.data?.messageId
+  );
+}
+
+/**
+ * Template HTML para correo de visita
+ */
+function getVisitaEmailTemplate(name: string, pdfUrl: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+}
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.header {
+  background-color: #007A53;
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+  border-radius: 8px 8px 0 0;
+}
+.content {
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 0 0 8px 8px;
+}
+.button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #007A53;
+  color: white !important;
+  text-decoration: none;
+  border-radius: 5px;
+  margin: 20px 0;
+}
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 12px;
+  color: #666;
+}
+.warning {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 15px;
+  margin: 20px 0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>🚗 Pase de Visita Aprobado</h1>
+</div>
+<div class="content">
+<p>Estimado(a) <strong>${name}</strong>,</p>
+<p>Su pase de visita ha sido <strong>generado exitosamente</strong>.</p>
+<p>Adjunto a este correo encontrará su pase de visita en formato PDF 
+con código QR para acceso.</p>
+<p style="text-align: center;">
+<a href="${pdfUrl}" class="button">Descargar Pase PDF</a>
+</p>
+<div class="warning">
+<strong>⚠️ IMPORTANTE:</strong>
+<ul style="margin: 10px 0; padding-left: 20px;">
+<li>Este pase es personal e intransferible</li>
+<li>Debe presentar identificación oficial vigente</li>
+<li>Válido solo para la fecha indicada</li>
+<li>Siga las indicaciones del personal de seguridad</li>
+<li>El vehículo debe coincidir con los datos registrados</li>
+</ul>
+</div>
+<p>Para cualquier duda o aclaración, por favor contacte al 
+área de accesos.</p>
+<p>¡Bienvenido al estadio!</p>
 </div>
 <div class="footer">
 <p><strong>Sistema de Accesos - Club León</strong></p>
