@@ -34,6 +34,8 @@ interface AreaConConteo {
   id: string;
   nombre: string;
   conteoUsuarios: number;
+  aprobados: number;
+  canjeados: number;
 }
 
 @Component({
@@ -158,46 +160,116 @@ interface AreaConConteo {
           <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Reportes</h2>
 
-            <!-- Mensaje cuando no hay jornada activa -->
+            <!-- Selector de Jornadas (visible cuando no hay jornada activa o para consultar historial) -->
+            <div *ngIf="todasLasJornadas.length > 0" class="mb-4">
+              <label class="block text-sm font-medium text-[#007A53] mb-2">
+                <mat-icon class="align-middle mr-1">event</mat-icon>
+                Seleccionar Jornada
+              </label>
+              <select
+                [(ngModel)]="jornadaSeleccionada"
+                (change)="onJornadaChange()"
+                class="w-full md:w-1/2 p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white"
+              >
+                <option [ngValue]="null" *ngIf="jornadaActiva">
+                  🟢 Jornada Activa {{ jornadaActiva.jornada }} -
+                  {{ jornadaActiva.equipo_local }} vs
+                  {{ jornadaActiva.equipo_visitante }}
+                </option>
+                <option
+                  *ngFor="let jornada of todasLasJornadas"
+                  [ngValue]="jornada"
+                >
+                  {{ jornada.activo ? '🟢' : '⚪' }} Jornada
+                  {{ jornada.jornada }} - {{ jornada.equipo_local }} vs
+                  {{ jornada.equipo_visitante }} ({{ jornada.fecha }})
+                </option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">
+                🟢 = Activa | ⚪ = Histórica
+              </p>
+            </div>
+
+            <!-- Mensaje cuando no hay jornadas disponibles -->
             <div
-              *ngIf="!jornadaActiva"
+              *ngIf="todasLasJornadas.length === 0 && !loading"
               class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 text-center"
             >
               <mat-icon class="text-yellow-600 text-5xl mb-2">warning</mat-icon>
               <h3 class="text-xl font-semibold text-yellow-800 mb-2">
-                No hay jornada activa
+                No hay jornadas registradas
               </h3>
               <p class="text-yellow-700">
-                No hay datos para mostrar. Por favor, active una jornada para
-                ver las estadísticas.
+                No hay datos para mostrar. Por favor, registre una jornada
+                primero.
               </p>
             </div>
 
-            <!-- Contenido cuando hay jornada activa -->
-            <div *ngIf="jornadaActiva">
+            <!-- Contenido cuando hay jornada seleccionada -->
+            <div *ngIf="jornadaSeleccionada || jornadaActiva">
               <!-- Lista de Reportes -->
               <div class="mb-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">
-                  Lista de Reportes
+                  {{
+                    (jornadaSeleccionada || jornadaActiva)?.activo
+                      ? 'Jornada Activa'
+                      : 'Jornada Histórica'
+                  }}
                 </h3>
-                <div class="bg-white border-2 border-[#007A53] rounded-lg p-4">
+                <div
+                  class="bg-white border-2 border-[#007A53] rounded-lg p-4"
+                  [class.border-green-500]="
+                    (jornadaSeleccionada || jornadaActiva)?.activo
+                  "
+                  [class.border-gray-400]="
+                    !(jornadaSeleccionada || jornadaActiva)?.activo
+                  "
+                >
                   <div class="flex items-center justify-between">
                     <div>
-                      <h4 class="text-base font-semibold text-[#007A53] mb-1">
-                        Jornada Activa: {{ jornadaActiva.jornada }}
+                      <h4
+                        class="text-base font-semibold mb-1"
+                        [class.text-[#007A53]]="
+                          (jornadaSeleccionada || jornadaActiva)?.activo
+                        "
+                        [class.text-gray-600]="
+                          !(jornadaSeleccionada || jornadaActiva)?.activo
+                        "
+                      >
+                        Jornada
+                        {{ (jornadaSeleccionada || jornadaActiva)?.jornada }}
+                        <span
+                          *ngIf="(jornadaSeleccionada || jornadaActiva)?.activo"
+                          class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                          >ACTIVA</span
+                        >
+                        <span
+                          *ngIf="
+                            !(jornadaSeleccionada || jornadaActiva)?.activo
+                          "
+                          class="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                          >HISTÓRICA</span
+                        >
                       </h4>
                       <p class="text-sm text-gray-700">
-                        {{ jornadaActiva.equipo_local }} vs
-                        {{ jornadaActiva.equipo_visitante }}
+                        {{
+                          (jornadaSeleccionada || jornadaActiva)?.equipo_local
+                        }}
+                        vs
+                        {{
+                          (jornadaSeleccionada || jornadaActiva)
+                            ?.equipo_visitante
+                        }}
                       </p>
                       <p class="text-xs text-gray-500 mt-1">
-                        {{ jornadaActiva.fecha }} - {{ jornadaActiva.hora }}
+                        {{ (jornadaSeleccionada || jornadaActiva)?.fecha }} -
+                        {{ (jornadaSeleccionada || jornadaActiva)?.hora }}
                       </p>
                     </div>
                     <div class="text-right">
                       <div class="text-sm text-gray-600">Total de usuarios</div>
                       <div class="text-3xl font-bold text-[#007A53]">
-                        {{ getTotalUsuariosJornadaActiva() }}
+                        {{ getTotalUsuariosJornadaSeleccionada() }}
                       </div>
                     </div>
                   </div>
@@ -231,6 +303,30 @@ interface AreaConConteo {
                               : 'usuarios asignados'
                           }}
                         </p>
+                        <div class="flex gap-3 mt-2 text-xs">
+                          <div class="flex items-center gap-1">
+                            <span
+                              class="w-2 h-2 bg-blue-500 rounded-full"
+                            ></span>
+                            <span class="text-gray-600"
+                              >Aprobados:
+                              <strong class="text-blue-600">{{
+                                area.aprobados
+                              }}</strong></span
+                            >
+                          </div>
+                          <div class="flex items-center gap-1">
+                            <span
+                              class="w-2 h-2 bg-green-500 rounded-full"
+                            ></span>
+                            <span class="text-gray-600"
+                              >Canjeados:
+                              <strong class="text-green-600">{{
+                                area.canjeados
+                              }}</strong></span
+                            >
+                          </div>
+                        </div>
                       </div>
                       <mat-icon class="text-[#007A53] opacity-50"
                         >people</mat-icon
@@ -253,247 +349,235 @@ interface AreaConConteo {
           </div>
 
           <!-- Botón para Mostrar/Ocultar Filtros -->
-    <div class="mb-4" *ngIf="jornadaActiva">
-      <button
-        (click)="toggleFilters()"
-        class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
-      >
-        <mat-icon>{{
-          showFilters ? 'filter_list_off' : 'filter_list'
-        }}</mat-icon>
-        {{ showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros' }}
-      </button>
-    </div>
+          <div class="mb-4" *ngIf="jornadaSeleccionada || jornadaActiva">
+            <button
+              (click)="toggleFilters()"
+              class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
+            >
+              <mat-icon>{{
+                showFilters ? 'filter_list_off' : 'filter_list'
+              }}</mat-icon>
+              {{ showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros' }}
+            </button>
+          </div>
 
-    <!-- Buscador -->
-    <div class="mb-4" *ngIf="jornadaActiva">
-      <div class="relative">
-        <mat-icon class="absolute left-3 top-3 text-gray-400">search</mat-icon>
-        <input
-          type="text"
-          [(ngModel)]="searchTerm"
-          (input)="applyFilters()"
-          placeholder="Buscar por ID, nombre, correo..."
-          class="w-full pl-10 pr-4 py-2 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-        />
-      </div>
-    </div>
-
-    <div
-      *ngIf="showFilters && jornadaActiva"
-      class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
-    >
-      <!-- Panel de Filtros -->
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1">
-          Jornada
-        </label>
-        <select
-          [(ngModel)]="selectedJornada"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded"
-        >
-          <option value="">Todas</option>
-          <option *ngFor="let partido of partidos" [ngValue]="partido.jornada">
-            Jornada {{ partido.jornada }} - {{ partido.equipo_local }} vs
-            {{ partido.equipo_visitante }}
-          </option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1"
-          >Área</label
-        >
-        <select
-          [(ngModel)]="filters.area"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-        >
-          <option value="">Todas</option>
-          <option *ngFor="let area of uniqueAreas" [value]="area">
-            {{ areasMap.get(area) || area }}
-          </option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1"
-          >Estado</label
-        >
-        <select
-          [(ngModel)]="filters.estado"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-        >
-          <option value="">Todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="aprobado">Aprobado</option>
-          <option value="canjeado">Canjeado</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1"
-          >Función</label
-        >
-        <select
-          [(ngModel)]="filters.funcion"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-        >
-          <option value="">Todas</option>
-          <option *ngFor="let func of uniqueFunciones" [value]="func">
-            {{ funcionesMap.get(func) || func }}
-          </option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1"
-          >Registrante</label
-        >
-        <select
-          [(ngModel)]="filters.registrante"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
-        >
-          <option value="">Todos</option>
-          <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
-            {{ reg }}
-          </option>
-        </select>
-      </div>
-    </div>
-
-    <div *ngIf="loading" class="text-center py-8">
-      <p class="text-gray-600">Cargando solicitudes...</p>
-    </div>
-
-
-    <div
-      *ngIf="!loading && filteredSolicitudes.length === 0"
-      class="text-center py-8"
-    >
-      <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
-      <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
-    </div>
-
-    <!-- Botón para exportar PDF (agregar cerca de los filtros) -->
-    <div class="flex justify-between items-center mb-4">
-      <button
-        *ngIf="filteredSolicitudes.length > 0"
-        (click)="exportToPDF()"
-        [disabled]="exportingPDF"
-        class="bg-[#007A53] text-white px-4 py-2 rounded hover:bg-[#006747] flex items-center disabled:opacity-50"
-      >
-        <mat-icon class="mr-2">picture_as_pdf</mat-icon>
-        {{ exportingPDF ? 'Generando PDF...' : 'Exportar a PDF' }}
-      </button>
-    </div>
-
-    <div
-      *ngIf="!loading && filteredSolicitudes.length > 0"
-      id="pdfTable"
-      class="overflow-x-auto"
-    >
-      <table class="w-full">
-        <thead class="bg-[#007A53] text-white">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Nombre
-            </th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Email
-            </th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Área
-            </th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Función
-            </th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Teléfono
-            </th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase">
-              Estado
-            </th>
-            <th>Jornada</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr
-            *ngFor="let solicitud of pagedSolicitudes"
-            class="hover:bg-[#007A53] hover:bg-opacity-5"
-            [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
-            [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
-          >
-            <td class="px-4 py-4 whitespace-nowrap">
-              <div class="text-sm font-medium text-gray-900">
-                {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
-              </div>
-              <div class="text-sm text-gray-500">
-                {{ solicitud.apellidoMaterno }}
-              </div>
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ solicitud.email }}
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ funcionesMap.get(solicitud.funcion) || solicitud.funcion }}
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ solicitud.telefono }}
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap">
-              <span
-                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                [ngClass]="{
-                  'bg-yellow-100 text-yellow-800':
-                    solicitud.estatus === 'pendiente',
-                  'bg-green-100 text-green-800':
-                    solicitud.estatus === 'aprobado',
-                  'bg-red-100 text-red-800': solicitud.estatus === 'canjeado'
-                }"
+          <!-- Buscador -->
+          <div class="mb-4" *ngIf="jornadaSeleccionada || jornadaActiva">
+            <div class="relative">
+              <mat-icon class="absolute left-3 top-3 text-gray-400"
+                >search</mat-icon
               >
-                {{ solicitud.estatus }}
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                (input)="applyFilters()"
+                placeholder="Buscar por ID, nombre, correo..."
+                class="w-full pl-10 pr-4 py-2 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              />
+            </div>
+          </div>
+
+          <div
+            *ngIf="showFilters && (jornadaSeleccionada || jornadaActiva)"
+            class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            <!-- Panel de Filtros -->
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Área</label
+              >
+              <select
+                [(ngModel)]="filters.area"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todas</option>
+                <option *ngFor="let area of uniqueAreas" [value]="area">
+                  {{ areasMap.get(area) || area }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Estado</label
+              >
+              <select
+                [(ngModel)]="filters.estado"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="canjeado">Canjeado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Función</label
+              >
+              <select
+                [(ngModel)]="filters.funcion"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todas</option>
+                <option *ngFor="let func of uniqueFunciones" [value]="func">
+                  {{ funcionesMap.get(func) || func }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-[#007A53] mb-1"
+                >Registrante</label
+              >
+              <select
+                [(ngModel)]="filters.registrante"
+                (change)="applyFilters()"
+                class="w-full p-2 border-2 border-[#007A53] rounded focus:outline-none focus:ring-2 focus:ring-[#007A53]"
+              >
+                <option value="">Todos</option>
+                <option *ngFor="let reg of uniqueRegistrantes" [value]="reg">
+                  {{ reg }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="loading" class="text-center py-8">
+            <p class="text-gray-600">Cargando solicitudes...</p>
+          </div>
+
+          <div
+            *ngIf="!loading && filteredSolicitudes.length === 0"
+            class="text-center py-8"
+          >
+            <mat-icon class="text-gray-400 text-5xl">inbox</mat-icon>
+            <p class="text-gray-600 mt-4">No hay solicitudes disponibles.</p>
+          </div>
+
+          <!-- Botón para exportar PDF (agregar cerca de los filtros) -->
+          <div class="flex justify-between items-center mb-4">
+            <button
+              *ngIf="filteredSolicitudes.length > 0"
+              (click)="exportToPDF()"
+              [disabled]="exportingPDF"
+              class="bg-[#007A53] text-white px-4 py-2 rounded hover:bg-[#006747] flex items-center disabled:opacity-50"
+            >
+              <mat-icon class="mr-2">picture_as_pdf</mat-icon>
+              {{ exportingPDF ? 'Generando PDF...' : 'Exportar a PDF' }}
+            </button>
+          </div>
+
+          <div
+            *ngIf="!loading && filteredSolicitudes.length > 0"
+            id="pdfTable"
+            class="overflow-x-auto"
+          >
+            <table class="w-full">
+              <thead class="bg-[#007A53] text-white">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Nombre
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Email
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Área
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Función
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Teléfono
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase">
+                    Estado
+                  </th>
+                  <th>Jornada</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr
+                  *ngFor="let solicitud of pagedSolicitudes"
+                  class="hover:bg-[#007A53] hover:bg-opacity-5"
+                  [class.bg-[#007A53]]="selectedSolicitudes.has(solicitud.id!)"
+                  [class.bg-opacity-10]="selectedSolicitudes.has(solicitud.id!)"
+                >
+                  <td class="px-4 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ solicitud.nombre }} {{ solicitud.apellidoPaterno }}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                      {{ solicitud.apellidoMaterno }}
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ solicitud.email }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ areasMap.get(solicitud.areaId) || solicitud.areaId }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{
+                      funcionesMap.get(solicitud.funcion) || solicitud.funcion
+                    }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ solicitud.telefono }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap">
+                    <span
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                      [ngClass]="{
+                        'bg-yellow-100 text-yellow-800':
+                          solicitud.estatus === 'pendiente',
+                        'bg-green-100 text-green-800':
+                          solicitud.estatus === 'aprobado',
+                        'bg-red-100 text-red-800':
+                          solicitud.estatus === 'canjeado'
+                      }"
+                    >
+                      {{ solicitud.estatus }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ solicitud.jornada || 'No asignada' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div
+              *ngIf="filteredSolicitudes.length > pageSize"
+              class="flex justify-center items-center gap-4 mt-4"
+            >
+              <button
+                (click)="currentPage = currentPage - 1; updatePagination()"
+                [disabled]="currentPage === 1"
+                class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Anterior
+              </button>
+
+              <span class="text-sm font-medium">
+                Página {{ currentPage }} de {{ totalPages }}
               </span>
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ solicitud.jornada || 'No asignada' }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div
-        *ngIf="filteredSolicitudes.length > pageSize"
-        class="flex justify-center items-center gap-4 mt-4"
-      >
-        <button
-          (click)="currentPage = currentPage - 1; updatePagination()"
-          [disabled]="currentPage === 1"
-          class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-          Anterior
-        </button>
 
-        <span class="text-sm font-medium">
-          Página {{ currentPage }} de {{ totalPages }}
-        </span>
-
-        <button
-          (click)="currentPage = currentPage + 1; updatePagination()"
-          [disabled]="currentPage === totalPages"
-          class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-          Siguiente
-        </button>
-      </div>
-    </div>
+              <button
+                (click)="currentPage = currentPage + 1; updatePagination()"
+                [disabled]="currentPage === totalPages"
+                class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
 
           <!-- ========== SECCIÓN 4: GRÁFICAS ANALÍTICAS ========== -->
           <div
             class="bg-white rounded-lg shadow-md p-6 mb-6"
-            *ngIf="jornadaActiva"
+            *ngIf="jornadaSeleccionada || jornadaActiva"
           >
             <h2
               class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2"
@@ -615,6 +699,10 @@ export class ReportesAnalyticsComponent implements OnInit {
   partidos: any[] = [];
   jornadaActiva: JornadaActiva | null = null;
   areasConConteo: AreaConConteo[] = [];
+
+  // Jornadas disponibles para consulta histórica
+  todasLasJornadas: JornadaActiva[] = [];
+  jornadaSeleccionada: JornadaActiva | null = null;
 
   // Maps para nombres
   areasMap = new Map<string, string>();
@@ -746,8 +834,9 @@ export class ReportesAnalyticsComponent implements OnInit {
         const tdNombre = document.createElement('td');
         tdNombre.style.padding = '8px';
         tdNombre.style.border = '1px solid #ddd';
-        tdNombre.textContent = `${solicitud.nombre} ${solicitud.apellidoPaterno
-          } ${solicitud.apellidoMaterno || ''}`;
+        tdNombre.textContent = `${solicitud.nombre} ${
+          solicitud.apellidoPaterno
+        } ${solicitud.apellidoMaterno || ''}`;
         row.appendChild(tdNombre);
 
         // Email
@@ -865,7 +954,8 @@ export class ReportesAnalyticsComponent implements OnInit {
 
       if (this.filters.funcion) {
         pdf.text(
-          `Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
+          `Función: ${
+            this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
           }`,
           10,
           yPosition
@@ -985,19 +1075,41 @@ export class ReportesAnalyticsComponent implements OnInit {
         this.funcionesService.getFunciones(),
       ]);
 
-      // Cargar partidos y jornada activa desde observables
-      this.partidosService.getPartidos$().subscribe((p) => {
-        this.partidos = p;
-      });
-
-      this.jornadaActivaService.getJornadasActivas$().subscribe((j) => {
-        this.jornadaActiva = j.length > 0 ? j[0] : null;
-        this.calculateAreasConteo();
-      });
-
       this.solicitudes = solicitudes;
       this.areas = areas;
       this.funciones = funciones;
+
+      // Cargar partidos desde Realtime Database
+      this.partidosService.getPartidos$().subscribe((partidos) => {
+        this.partidos = partidos;
+        console.log('✅ Partidos cargados:', partidos);
+
+        // Construir jornadas desde los datos de usuarios
+        this.construirJornadasDesdeUsuarios();
+      });
+
+      // Intentar obtener jornada activa desde Realtime Database
+      this.jornadaActivaService
+        .getJornadasActivas$()
+        .subscribe((jornadasActivas) => {
+          if (jornadasActivas.length > 0) {
+            this.jornadaActiva = jornadasActivas[0];
+            console.log('✅ Jornada activa encontrada:', this.jornadaActiva);
+          } else {
+            console.warn('⚠️ No hay jornada activa en Realtime Database');
+            this.jornadaActiva = null;
+          }
+
+          // Actualizar la jornada seleccionada
+          if (this.jornadaActiva) {
+            this.jornadaSeleccionada = null; // null = usar jornada activa
+          } else if (this.todasLasJornadas.length > 0) {
+            this.jornadaSeleccionada = this.todasLasJornadas[0];
+          }
+
+          this.calculateAreasConteo();
+          this.applyFilters();
+        });
 
       // Crear mapas de nombres
       this.areasMap = new Map(areas.map((a: Area) => [a.id!, a.nombre]));
@@ -1018,21 +1130,9 @@ export class ReportesAnalyticsComponent implements OnInit {
       ] as string[];
       this.uniqueRegistrantes = [
         ...new Set(
-          solicitudes
-            .map((s: UserAccess) => s.registrantEmail)
-            .filter(Boolean)
+          solicitudes.map((s: UserAccess) => s.registrantEmail).filter(Boolean)
         ),
       ] as string[];
-
-
-      // Calcular áreas con conteo
-      this.calculateAreasConteo();
-
-      // Aplicar filtros iniciales
-      this.applyFilters();
-
-      // Actualizar gráficas
-      this.updateCharts();
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -1041,38 +1141,193 @@ export class ReportesAnalyticsComponent implements OnInit {
   }
 
   calculateAreasConteo() {
-    if (!this.jornadaActiva) {
+    const jornadaActual = this.getJornadaActual();
+
+    console.log('🔍 calculateAreasConteo - jornadaActual:', jornadaActual);
+    console.log(
+      '🔍 calculateAreasConteo - solicitudes.length:',
+      this.solicitudes.length
+    );
+    console.log('🔍 calculateAreasConteo - areas.length:', this.areas.length);
+
+    if (!jornadaActual) {
+      console.warn('⚠️ No hay jornada actual, areasConConteo = []');
       this.areasConConteo = [];
       return;
     }
 
-    const jornadaId = this.jornadaActiva.jornada;
-    const usuariosPorArea = new Map<string, number>();
+    const jornadaId = jornadaActual.jornada;
+    const usuariosPorArea = new Map<
+      string,
+      { aprobados: number; canjeados: number }
+    >();
 
-    // Contar usuarios aprobados por área en la jornada activa
-    this.solicitudes
-      .filter(
-        (s) => s.jornada === jornadaId && s.estatus === 'aprobado' && s.areaId
-      )
-      .forEach((s) => {
-        const count = usuariosPorArea.get(s.areaId!) || 0;
-        usuariosPorArea.set(s.areaId!, count + 1);
-      });
+    // Contar usuarios APROBADOS y CANJEADOS por área en la jornada seleccionada
+    const solicitudesFiltradas = this.solicitudes.filter(
+      (s) =>
+        s.jornada === jornadaId &&
+        s.areaId &&
+        (s.estatus === 'aprobado' || s.estatus === 'canjeado')
+    );
+
+    console.log(
+      `🔍 Solicitudes filtradas para jornada ${jornadaId}:`,
+      solicitudesFiltradas.length
+    );
+
+    solicitudesFiltradas.forEach((s) => {
+      const conteo = usuariosPorArea.get(s.areaId!) || {
+        aprobados: 0,
+        canjeados: 0,
+      };
+      if (s.estatus === 'aprobado') {
+        conteo.aprobados++;
+      } else if (s.estatus === 'canjeado') {
+        conteo.canjeados++;
+      }
+      usuariosPorArea.set(s.areaId!, conteo);
+    });
+
+    console.log('🔍 usuariosPorArea Map:', usuariosPorArea);
 
     // Crear array con todas las áreas
-    this.areasConConteo = this.areas.map((area) => ({
-      id: area.id!,
-      nombre: area.nombre,
-      conteoUsuarios: usuariosPorArea.get(area.id!) || 0,
-    }));
+    const todasAreas = this.areas.map((area) => {
+      const conteo = usuariosPorArea.get(area.id!) || {
+        aprobados: 0,
+        canjeados: 0,
+      };
+      return {
+        id: area.id!,
+        nombre: area.nombre,
+        aprobados: conteo.aprobados,
+        canjeados: conteo.canjeados,
+        conteoUsuarios: conteo.aprobados + conteo.canjeados,
+      };
+    });
+
+    console.log('🔍 Todas las áreas (antes de filtrar):', todasAreas);
+
+    this.areasConConteo = todasAreas
+      .filter((area) => area.conteoUsuarios > 0) // Solo mostrar áreas con usuarios
+      .sort((a, b) => b.conteoUsuarios - a.conteoUsuarios); // Ordenar por mayor conteo
+
+    console.log(
+      '✅ areasConConteo final (después de filtrar y ordenar):',
+      this.areasConConteo
+    );
   }
 
-  getTotalUsuariosJornadaActiva(): number {
-    if (!this.jornadaActiva) return 0;
+  /**
+   * Construye la lista de jornadas disponibles desde los datos de usuarios
+   */
+  construirJornadasDesdeUsuarios(): void {
+    // Obtener jornadas únicas desde los usuarios
+    const jornadasUnicas = new Set<number>();
+    this.solicitudes.forEach((s) => {
+      if (s.jornada !== undefined && s.jornada !== null) {
+        jornadasUnicas.add(s.jornada);
+      }
+    });
+
+    console.log(
+      '📊 Jornadas únicas encontradas en usuarios:',
+      Array.from(jornadasUnicas)
+    );
+
+    // Construir array de jornadas con información de partidos
+    this.todasLasJornadas = Array.from(jornadasUnicas)
+      .sort((a, b) => b - a) // Ordenar descendente (más reciente primero)
+      .map((numJornada) => {
+        // Buscar el partido correspondiente
+        const partido = this.partidos.find((p) => p.jornada === numJornada);
+
+        if (partido) {
+          return {
+            jornada: numJornada,
+            equipo_local: partido.equipo_local,
+            equipo_visitante: partido.equipo_visitante,
+            estadio: partido.estadio,
+            fecha: partido.fecha,
+            hora: partido.hora,
+            activo: false, // Por defecto no activa
+          } as JornadaActiva;
+        } else {
+          // Si no hay partido, crear jornada básica
+          return {
+            jornada: numJornada,
+            equipo_local: 'Desconocido',
+            equipo_visitante: 'Desconocido',
+            estadio: '',
+            fecha: '',
+            hora: '',
+            activo: false,
+          } as JornadaActiva;
+        }
+      });
+
+    console.log('✅ Jornadas construidas:', this.todasLasJornadas);
+
+    // Si hay jornada activa, marcarla
+    if (this.jornadaActiva) {
+      const jornadaActivaIndex = this.todasLasJornadas.findIndex(
+        (j) => j.jornada === this.jornadaActiva!.jornada
+      );
+      if (jornadaActivaIndex !== -1) {
+        this.todasLasJornadas[jornadaActivaIndex].activo = true;
+      }
+    }
+
+    // Seleccionar jornada por defecto
+    if (
+      !this.jornadaSeleccionada &&
+      !this.jornadaActiva &&
+      this.todasLasJornadas.length > 0
+    ) {
+      this.jornadaSeleccionada = this.todasLasJornadas[0];
+      console.log(
+        '📌 Jornada seleccionada por defecto:',
+        this.jornadaSeleccionada
+      );
+    }
+
+    // Recalcular áreas y aplicar filtros después de construir jornadas
+    this.calculateAreasConteo();
+    this.applyFilters();
+    console.log(
+      '🔄 Áreas recalculadas y filtros aplicados después de construir jornadas'
+    );
+  }
+
+  /**
+   * Obtiene la jornada actual (seleccionada o activa)
+   */
+  getJornadaActual(): JornadaActiva | null {
+    return this.jornadaSeleccionada || this.jornadaActiva;
+  }
+
+  /**
+   * Maneja el cambio de jornada en el selector
+   */
+  onJornadaChange(): void {
+    this.calculateAreasConteo();
+    this.applyFilters();
+  }
+
+  getTotalUsuariosJornadaSeleccionada(): number {
+    const jornadaActual = this.getJornadaActual();
+    if (!jornadaActual) return 0;
+
+    // Contar usuarios APROBADOS y CANJEADOS (procesados)
     return this.solicitudes.filter(
       (s) =>
-        s.jornada === this.jornadaActiva!.jornada && s.estatus === 'aprobado'
+        s.jornada === jornadaActual.jornada &&
+        (s.estatus === 'aprobado' || s.estatus === 'canjeado')
     ).length;
+  }
+
+  // Mantener compatibilidad con código existente
+  getTotalUsuariosJornadaActiva(): number {
+    return this.getTotalUsuariosJornadaSeleccionada();
   }
 
   toggleFilters() {
@@ -1081,6 +1336,12 @@ export class ReportesAnalyticsComponent implements OnInit {
 
   applyFilters() {
     let filtered = [...this.solicitudes];
+
+    // 🔥 PRIMERO: Filtrar por jornada seleccionada/activa
+    const jornadaActual = this.getJornadaActual();
+    if (jornadaActual) {
+      filtered = filtered.filter((s) => s.jornada === jornadaActual.jornada);
+    }
 
     // Filtro por búsqueda
     if (this.searchTerm) {
@@ -1092,11 +1353,6 @@ export class ReportesAnalyticsComponent implements OnInit {
           s.apellidoPaterno?.toLowerCase().includes(term) ||
           s.apellidoMaterno?.toLowerCase().includes(term)
       );
-    }
-
-    // Filtro por jornada
-    if (this.selectedJornada) {
-      filtered = filtered.filter((s) => s.jornada === this.selectedJornada);
     }
 
     // Filtro por área
@@ -1119,7 +1375,6 @@ export class ReportesAnalyticsComponent implements OnInit {
         (s) => s.registrantEmail === this.filters.registrante
       );
     }
-
 
     this.filteredSolicitudes = filtered;
     // 🔹 REINICIAR PAGINACIÓN

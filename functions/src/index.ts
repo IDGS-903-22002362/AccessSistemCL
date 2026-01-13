@@ -157,6 +157,65 @@ async function downloadImage(url: string): Promise<Buffer | null> {
   }
 }
 
+const sleep = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+type RetryOptions = {
+  maxAttempts: number;
+  baseDelayMs: number;
+  shouldRetry?: (error: any) => boolean;
+};
+
+async function withRetry<T>(
+  operationName: string,
+  operation: () => Promise<T>,
+  options: RetryOptions
+): Promise<T> {
+  let attempt = 1;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      if (attempt > 1) {
+        console.log(`[RETRY] ${operationName} intento ${attempt}`);
+      }
+      return await operation();
+    } catch (error) {
+      const shouldRetry =
+        attempt < options.maxAttempts &&
+        (options.shouldRetry ? options.shouldRetry(error) : true);
+
+      console.error(`[RETRY] ${operationName} fallo`, {
+        intento: attempt,
+        maxIntentos: options.maxAttempts,
+        error: (error as Error).message,
+      });
+
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      const delay = options.baseDelayMs * attempt;
+      await sleep(delay);
+      attempt += 1;
+    }
+  }
+}
+
+const isRetriableHttpError = (error: any) => {
+  const status = error?.response?.status;
+  const code = error?.code;
+  if (status === 429) {
+    return true;
+  }
+  if (status && status >= 500) {
+    return true;
+  }
+  return ["ETIMEDOUT", "ECONNRESET", "ECONNABORTED"].includes(code);
+};
+
 interface BrevoPayload {
   sender: { email: string; name: string };
   to: Array<{ email: string; name?: string }>;
@@ -628,7 +687,7 @@ async function generatePDF(
             .fontSize(20)
             .font("Helvetica-Bold")
             .fillColor("white")
-            .text("ACCESO ESTACIONAMIENTO", margin, margin + 8, {
+            .text("CONSTANCIA UNICA DE ACREDITACION", margin, margin + 8, {
               width: contentWidth,
               align: "center",
             });
@@ -992,6 +1051,7 @@ async function sendEmailNotification(
 ) {
   const startTime = Date.now();
   console.log(`[EMAIL-START] userId: ${userId}, email: ${userData.email}`);
+  let latestUserData = userData;
 
   try {
     const BREVO_API_KEY = process.env.BREVO_API_KEY;
@@ -1004,13 +1064,40 @@ async function sendEmailNotification(
       throw new Error("Brevo API Key no configurada");
     }
 
-    const isApproved = userData.estatus === "aprobado";
-    const fullName = `${userData.nombre} ${userData.apellidoPaterno}`.trim();
+    if (docRef) {
+      try {
+        const latestSnap = await docRef.get();
+        if (latestSnap.exists) {
+          latestUserData = {
+            ...latestUserData,
+            ...latestSnap.data(),
+          };
+        }
+      } catch (error) {
+        console.log(
+          "[EMAIL] No se pudo cargar el documento actualizado",
+          error
+        );
+      }
+    }
+
+    const isApproved = latestUserData.estatus === "aprobado";
+    const fullName =
+      `${latestUserData.nombre} ${latestUserData.apellidoPaterno}`.trim();
 
     console.log(
       `[EMAIL-PROCESS] userId: ${userId}`,
-      `estatus: ${userData.estatus}, nombre: ${fullName}`
+      `estatus: ${latestUserData.estatus}, nombre: ${fullName}`
     );
+
+    if (docRef && latestUserData.emailSent) {
+      console.log(
+        "[EMAIL-SKIP] Correo ya enviado anteriormente",
+        "- userId:",
+        userId
+      );
+      return;
+    }
 
     if (!isApproved) {
       // Para rechazados, solo enviar correo simple sin PDF
@@ -1019,7 +1106,11 @@ async function sendEmailNotification(
         "- userId:",
         userId
       );
-      await sendRejectionEmail(userData, fullName, BREVO_API_KEY);
+      await withRetry(
+        "rejection-email",
+        () => sendRejectionEmail(latestUserData, fullName, BREVO_API_KEY),
+        {maxAttempts: 3, baseDelayMs: 800, shouldRetry: isRetriableHttpError}
+      );
       console.log(
         "[EMAIL-SUCCESS] Correo de rechazo enviado",
         "- userId:",
@@ -1030,25 +1121,69 @@ async function sendEmailNotification(
       return;
     }
 
-    // Obtener datos relacionados
-    console.log("Obteniendo datos relacionados...");
-    const relatedData = await getRelatedData(userData);
+    const existingPdfUrl = latestUserData.pdfUrl || latestUserData.pdfURL;
+    let pdfUrl = existingPdfUrl;
+    let pdfBuffer: Buffer | null = null;
+    const fileName = `acreditacion_${userId}.pdf`;
 
-    // Generar PDF
-    console.log("Generando PDF...");
-    const pdfBuffer = await generatePDF(userData, relatedData, userId);
+    if (!pdfUrl) {
+      // Obtener datos relacionados
+      console.log("Obteniendo datos relacionados...");
+      const relatedData = await getRelatedData(latestUserData);
 
-    // Subir PDF a Storage
-    console.log("Subiendo PDF a Storage...");
-    const fileName = `acreditacion_${Date.now()}.pdf`;
-    const pdfUrl = await uploadPDFToStorage(pdfBuffer, userId, fileName);
+      // Generar PDF
+      console.log("Generando PDF...");
+      pdfBuffer = await withRetry(
+        "pdf-generation",
+        () => generatePDF(latestUserData, relatedData, userId),
+        {maxAttempts: 2, baseDelayMs: 600}
+      );
 
-    // Guardar URL en Firestore
-    if (docRef) {
-      await docRef.update({
-        pdfUrl: pdfUrl,
-        pdfGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Subir PDF a Storage
+      console.log("Subiendo PDF a Storage...");
+      if (!pdfBuffer) {
+        throw new Error("Error: PDF buffer no generado");
+      }
+      const generatedPdfBuffer = pdfBuffer; // Type assertion helper
+      pdfUrl = await withRetry(
+        "pdf-upload",
+        () => uploadPDFToStorage(generatedPdfBuffer, userId, fileName),
+        {maxAttempts: 3, baseDelayMs: 1000, shouldRetry: isRetriableHttpError}
+      );
+
+      // Guardar URL en Firestore
+      if (docRef) {
+        await withRetry(
+          "firestore-update-pdf",
+          () =>
+            docRef.update({
+              pdfUrl: pdfUrl,
+              pdfGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }),
+          {maxAttempts: 3, baseDelayMs: 800}
+        );
+      }
+    } else {
+      console.log("[EMAIL] PDF existente detectado, reutilizando:", pdfUrl);
+    }
+
+    if (!pdfBuffer) {
+      const bucket = admin.storage().bucket();
+      const pdfPath = pdfUrl?.split(`${bucket.name}/`)[1];
+
+      if (!pdfPath) {
+        throw new Error("No se pudo extraer la ruta del PDF");
+      }
+
+      const file = bucket.file(pdfPath);
+      pdfBuffer = await withRetry(
+        "pdf-download",
+        async () => {
+          const [buffer] = await file.download();
+          return buffer;
+        },
+        {maxAttempts: 3, baseDelayMs: 800, shouldRetry: isRetriableHttpError}
+      );
     }
 
     // Preparar correo con PDF adjunto
@@ -1059,7 +1194,7 @@ async function sendEmailNotification(
         email: "sistemasleonfc@gmail.com",
         name: "FUERZA DEPORTIVA DEL LEON",
       },
-      to: [{email: userData.email, name: fullName}],
+      to: [{email: latestUserData.email, name: fullName}],
       subject: "✅ Constancia de Acreditación - Club León",
       htmlContent: getApprovalEmailTemplate(fullName, pdfUrl),
       attachment: [
@@ -1075,21 +1210,22 @@ async function sendEmailNotification(
       "- userId:",
       userId
     );
-    const response = await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      payload,
-      {
-        headers: {
-          "api-key": BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
+    const response = await withRetry(
+      "brevo-send",
+      () =>
+        axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+          headers: {
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+          },
+        }),
+      {maxAttempts: 4, baseDelayMs: 1200, shouldRetry: isRetriableHttpError}
     );
 
     const elapsed = Date.now() - startTime;
     console.log("[EMAIL-SUCCESS] ✅ Correo enviado exitosamente:", {
       userId: userId,
-      to: userData.email,
+      to: latestUserData.email,
       status: response.status,
       messageId: response.data?.messageId,
       pdfUrl: pdfUrl,
@@ -1097,23 +1233,35 @@ async function sendEmailNotification(
     });
 
     if (docRef) {
-      await docRef.update({
-        emailSent: true,
-        emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-        emailMessageId: response.data?.messageId || null,
-      });
-      console.log(
-        "[EMAIL-FIRESTORE] Documento actualizado",
-        "- userId:",
-        userId
-      );
+      try {
+        await withRetry(
+          "firestore-update-email",
+          () =>
+            docRef.update({
+              emailSent: true,
+              emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+              emailMessageId: response.data?.messageId || null,
+            }),
+          {maxAttempts: 3, baseDelayMs: 800}
+        );
+        console.log(
+          "[EMAIL-FIRESTORE] Documento actualizado",
+          "- userId:",
+          userId
+        );
+      } catch (error) {
+        console.error(
+          "[EMAIL-FIRESTORE] Error actualizando estatus de envio",
+          error
+        );
+      }
     }
   } catch (error) {
     const err = error as { message: string; response?: any };
     const elapsed = Date.now() - startTime;
     console.error("[EMAIL-ERROR] ❌ Error en proceso de envío:", {
       userId: userId,
-      email: userData.email,
+      email: latestUserData.email,
       error: err.message,
       response: err.response?.data || null,
       tiempoTranscurrido: `${elapsed}ms`,

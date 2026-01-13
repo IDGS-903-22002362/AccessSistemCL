@@ -25,6 +25,11 @@ import { take, filter } from 'rxjs/operators';
 import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { EmpresasService } from '../../core/services/empresas.service';
+import { AreasService, Area } from '../../core/services/areas.service';
+import {
+  JornadaActivaService,
+  JornadaActiva,
+} from '../../core/services/jornadas.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -225,8 +230,6 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                   </select>
                 </div>
               </div>
-              
-
 
               <table mat-table [dataSource]="paginatedUsers" class="w-full">
                 <!-- Nombre -->
@@ -258,7 +261,13 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                     {{ user.funcionNombre }}
                   </td>
                 </ng-container>
-
+                <!-- Pulsera (Area) -->
+                <ng-container matColumnDef="pulsera">
+                  <th mat-header-cell *matHeaderCellDef>Pulsera</th>
+                  <td mat-cell *matCellDef="let user">
+                    {{ user.areaNombre || 'Sin asignar' }}
+                  </td>
+                </ng-container>
                 <!-- Estatus -->
                 <ng-container matColumnDef="estatus">
                   <th mat-header-cell *matHeaderCellDef>Estatus</th>
@@ -267,12 +276,6 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                       {{ user.estatusNormalized || user.estatus | titlecase }}
                     </span>
                   </td>
-                </ng-container>
-
-                <!-- Fecha -->
-                <ng-container matColumnDef="fecha">
-                  <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                  <td mat-cell *matCellDef="let user">{{ user.fecha }}</td>
                 </ng-container>
 
                 <!-- PDF -->
@@ -289,6 +292,24 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                         matTooltip="Descargar acreditación"
                       >
                         <mat-icon>download</mat-icon>
+                      </button>
+                      <button
+                        mat-icon-button
+                        style="color: #25D366;"
+                        (click)="shareWhatsApp(user)"
+                        matTooltip="Compartir por WhatsApp"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path
+                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"
+                          />
+                        </svg>
                       </button>
                       }
                       <button
@@ -398,11 +419,17 @@ export class UserDashboardComponent implements OnInit {
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   private empresasService = inject(EmpresasService);
+  private areasService = inject(AreasService);
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
+  areasMap = new Map<string, string>();
   isHamcoUser = false;
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private jornadaActivaService = inject(JornadaActivaService);
+
+  // Jornada activa
+  jornadaActiva: JornadaActiva | null = null;
 
   // ===== Filtros =====
   showFilters = false;
@@ -428,7 +455,6 @@ export class UserDashboardComponent implements OnInit {
   uniqueFunciones: string[] = [];
   uniqueEmpresas: string[] = [];
 
-
   async loadFunciones(): Promise<void> {
     const funciones = await this.funcionesService.getFunciones();
 
@@ -449,6 +475,41 @@ export class UserDashboardComponent implements OnInit {
     });
   }
 
+  async loadAreas(): Promise<void> {
+    const areas = await this.areasService.getAreas();
+
+    areas.forEach((area) => {
+      if (area.id) {
+        this.areasMap.set(area.id, area.nombre);
+      }
+    });
+  }
+
+  /**
+   * Carga la jornada activa desde Realtime Database
+   */
+  async loadJornadaActiva(): Promise<void> {
+    return new Promise((resolve) => {
+      this.jornadaActivaService.getJornadasActivas$().subscribe({
+        next: (jornadasActivas: JornadaActiva[]) => {
+          if (jornadasActivas.length > 0) {
+            this.jornadaActiva = jornadasActivas[0];
+            console.log('✅ Jornada activa encontrada:', this.jornadaActiva);
+          } else {
+            console.warn('⚠️ No hay jornada activa');
+            this.jornadaActiva = null;
+          }
+          resolve();
+        },
+        error: (error) => {
+          console.error('❌ Error cargando jornada activa:', error);
+          this.jornadaActiva = null;
+          resolve();
+        },
+      });
+    });
+  }
+
   // Modifica displayedColumns para que sea dinámico
   get displayedColumns(): string[] {
     const baseColumns = [
@@ -456,8 +517,8 @@ export class UserDashboardComponent implements OnInit {
       'email',
       'empresa',
       'funcion',
+      'pulsera',
       'estatus',
-      'fecha',
       'pdf',
     ];
     if (this.isHamcoUser) {
@@ -490,6 +551,15 @@ export class UserDashboardComponent implements OnInit {
         );
       }
 
+      // 🔥 FILTRAR POR JORNADA ACTIVA (todos los usuarios)
+      if (this.jornadaActiva) {
+        users = users.filter((u) => u.jornada === this.jornadaActiva!.jornada);
+        console.log(
+          `✅ Usuarios filtrados por jornada activa ${this.jornadaActiva.jornada}:`,
+          users.length
+        );
+      }
+
       const mapped = users.map((user) => {
         const estatusNormalized = this.normalizeStatus(user.estatus);
         const pdfUrlResolved =
@@ -501,6 +571,7 @@ export class UserDashboardComponent implements OnInit {
           pdfUrlResolved,
           funcionNombre: this.funcionesMap.get(user.funcion) || '?',
           empresaNombre: this.empresasMap.get(user.empresaId) || '?',
+          areaNombre: this.areasMap.get(user.areaId || '') || 'Sin asignar',
           fecha: user.createdAt?.toDate
             ? user.createdAt.toDate().toLocaleDateString()
             : '?',
@@ -516,7 +587,6 @@ export class UserDashboardComponent implements OnInit {
       this.uniqueFunciones = [...new Set(mapped.map((u) => u.funcion))];
       this.uniqueEmpresas = [...new Set(mapped.map((u) => u.empresaId))];
 
-
       // 🔹 contadores
       this.totalUsuarios = mapped.length;
       this.usuariosAprobados = mapped.filter(
@@ -531,7 +601,8 @@ export class UserDashboardComponent implements OnInit {
       this.cdr.detectChanges();
 
       console.log(
-        `✅ Usuarios cargados (${this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'
+        `✅ Usuarios cargados (${
+          this.isHamcoUser ? 'GLOBAL - HAMCO' : 'FILTRADO'
         })`,
         mapped.length
       );
@@ -628,11 +699,8 @@ export class UserDashboardComponent implements OnInit {
       filtered = filtered.filter((u) => u.funcion === this.filters.funcion);
     }
     if (this.filters.empresa) {
-      filtered = filtered.filter(
-        (u) => u.empresaId === this.filters.empresa
-      );
+      filtered = filtered.filter((u) => u.empresaId === this.filters.empresa);
     }
-
 
     this.filteredUsers = filtered;
     this.updatePagination();
@@ -682,9 +750,13 @@ export class UserDashboardComponent implements OnInit {
       }
     });
 
+    // Cargar jornada activa PRIMERO (para todos los usuarios)
+    await this.loadJornadaActiva();
+
     // Cargar datos iniciales - PRIMERO los mapas, LUEGO los usuarios
     await this.loadFunciones();
     await this.loadEmpresas();
+    await this.loadAreas();
     await this.loadUsers();
 
     // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO (tiempo real)
@@ -756,6 +828,99 @@ export class UserDashboardComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  shareWhatsApp(user: any): void {
+    if (!user) {
+      return;
+    }
+
+    if (user.estatusNormalized !== 'aprobado') {
+      this.snackBar.open(
+        'Solo se puede compartir por WhatsApp cuando el usuario esta aprobado.',
+        'Cerrar',
+        {
+          duration: 5000,
+          panelClass: ['error-snackbar'],
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+        }
+      );
+      return;
+    }
+
+    const pdfUrl = user.pdfUrlResolved;
+    if (!pdfUrl || !this.isValidHttpUrl(pdfUrl)) {
+      this.snackBar.open(
+        'PDF no disponible o URL invalida para compartir.',
+        'Cerrar',
+        {
+          duration: 5000,
+          panelClass: ['error-snackbar'],
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+        }
+      );
+      return;
+    }
+
+    const rawPhone = user.telefono || user.phone || user.celular || '';
+    const normalizedPhone = this.normalizePhoneForWhatsApp(rawPhone);
+    if (!normalizedPhone) {
+      this.snackBar.open(
+        'Numero de telefono invalido para WhatsApp.',
+        'Cerrar',
+        {
+          duration: 6000,
+          panelClass: ['error-snackbar'],
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+        }
+      );
+      return;
+    }
+
+    const nombre = `${user.nombre || ''} ${user.apellidoPaterno || ''}`.trim();
+    const saludo = nombre ? `Hola ${nombre},` : 'Hola,';
+    const message = `${saludo} aqui esta tu constancia de acreditacion: ${pdfUrl}`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  private normalizePhoneForWhatsApp(value: string | undefined): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const digits = value.replace(/\D/g, '');
+    if (!digits) {
+      return null;
+    }
+
+    if (digits.length === 10) {
+      return `52${digits}`;
+    }
+
+    if (digits.length === 12 && digits.startsWith('52')) {
+      return digits;
+    }
+
+    if (digits.length === 13 && digits.startsWith('521')) {
+      return `52${digits.slice(3)}`;
+    }
+
+    return null;
+  }
+
+  private isValidHttpUrl(value: string): boolean {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
 
   async resendEmail(userId: string, userName: string): Promise<void> {
@@ -872,7 +1037,7 @@ export class ConfirmDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ConfirmDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
-  ) { }
+  ) {}
 
   onConfirm(): void {
     this.dialogRef.close(true);
