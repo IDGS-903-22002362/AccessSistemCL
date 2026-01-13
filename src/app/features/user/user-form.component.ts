@@ -155,8 +155,30 @@ import { take } from 'rxjs/operators';
                   >
                     {{ empresa.nombre }}
                   </mat-option>
+
+                  
+
+                  <mat-option value="OTRA" class="text-[#007A53] font-semibold">
+                    ➕ Agregar nueva empresa
+                  </mat-option>
                 </mat-select>
+
+
               </mat-form-field>
+
+
+              <mat-form-field
+                *ngIf="showEmpresaOtra"
+                appearance="fill"
+                class="w-full mt-4"
+              >
+                <mat-label>Nombre de la empresa</mat-label>
+                <input matInput formControlName="empresaOtra" />
+                <mat-error>
+                  El nombre de la empresa es requerido
+                </mat-error>
+              </mat-form-field>
+
             </form>
           </mat-card-content>
         </mat-card>
@@ -1050,6 +1072,8 @@ export class UserFormComponent implements OnInit {
   private usersService = inject(UsersService);
   isHamcoUser = false;
   private jornadaService = inject(JornadaActivaService);
+  readonly EMPRESA_OTRA_ID = '05mwfxhSyFDrGd72tuzO';
+
 
   selectedFileName: string | null = null;
   showManualForm = false;
@@ -1070,6 +1094,8 @@ export class UserFormComponent implements OnInit {
   }> = [];
   private notificationId = 0;
   jornadaActiva?: JornadaActiva;
+  showEmpresaOtra = false;
+
 
   // 🔹 Paginación (similar al otro componente)
   pageSize = 10;
@@ -1102,6 +1128,37 @@ export class UserFormComponent implements OnInit {
         },
       });
   }
+
+  resolveEmpresaPayload(): {
+    tipo: 'NORMAL' | 'OTRA';
+    empresaId: string;
+    nombre: string;
+  } {
+    const empresaIdSeleccionada = this.empresaForm.value.empresaId;
+
+    // 🟢 Empresa normal
+    if (empresaIdSeleccionada && empresaIdSeleccionada !== 'OTRA') {
+      const empresaSeleccionada = this.empresas.find(
+        e => e.id === empresaIdSeleccionada
+      );
+
+      return {
+        tipo: 'NORMAL',
+        empresaId: empresaIdSeleccionada,
+        nombre: empresaSeleccionada?.nombre ?? '',
+      };
+    }
+
+    // 🟡 Empresa OTRA
+    return {
+      tipo: 'OTRA',
+      empresaId: this.EMPRESA_OTRA_ID, // ✅ string garantizado
+      nombre: this.empresaForm.value.empresaOtra ?? '',
+    };
+  }
+
+
+
 
   async checkEmpresaAccess() {
     const authUser = this.authService.getCurrentUser();
@@ -1187,17 +1244,27 @@ export class UserFormComponent implements OnInit {
   empresas: Empresa[] = [];
   empresaForm = this.fb.group({
     empresaId: [''],
+    empresaOtra: [''],
   });
 
   async loadEmpresas() {
     try {
-      this.empresas =
+      const empresasBD =
         await this.empresasService.getEmpresasPorUsuarioLogueado();
+
+
+      this.empresas = empresasBD.filter(
+        e =>
+          e.id !== this.EMPRESA_OTRA_ID &&
+          e.nombre?.toUpperCase() !== 'OTRA'
+      );
+
     } catch (error) {
       console.error('Error cargando empresas:', error);
       this.empresas = [];
     }
   }
+
 
   async loadAreasByUsuario() {
     const authUser = this.authService.getCurrentUser();
@@ -1274,6 +1341,20 @@ export class UserFormComponent implements OnInit {
       'Listo para registrar',
       'Seleccione la empresa y el area antes de agregar usuarios.'
     );
+    this.empresaForm.get('empresaId')?.valueChanges.subscribe(value => {
+      if (value === 'OTRA') {
+        this.showEmpresaOtra = true;
+        this.empresaForm
+          .get('empresaOtra')
+          ?.setValidators([Validators.required]);
+      } else {
+        this.showEmpresaOtra = false;
+        this.empresaForm.get('empresaOtra')?.clearValidators();
+        this.empresaForm.get('empresaOtra')?.reset();
+      }
+
+      this.empresaForm.get('empresaOtra')?.updateValueAndValidity();
+    });
   }
 
   onlyNumbers(event: KeyboardEvent) {
@@ -1614,11 +1695,52 @@ export class UserFormComponent implements OnInit {
   }
 
   async submitAll() {
+
+    // ⛔ No permitir doble envío
+    if (this.isSubmitting) return;
+
     if (this.areaForm.invalid) {
       this.pushNotification(
         'error',
         'Area requerida',
         'Seleccione un area para continuar.'
+      );
+      return;
+    }
+    // 🔴 Validar empresa (solo si puede seleccionarla)
+    if (this.canSelectEmpresa) {
+      const empresaId = this.empresaForm.value.empresaId;
+      const empresaOtra = this.empresaForm.value.empresaOtra;
+
+      if (!empresaId) {
+        this.pushNotification(
+          'error',
+          'Empresa requerida',
+          'Debes seleccionar una empresa.'
+        );
+        return;
+      }
+
+      if (empresaId === 'OTRA' && !empresaOtra?.trim()) {
+        this.pushNotification(
+          'error',
+          'Empresa requerida',
+          'Debes escribir el nombre de la nueva empresa.'
+        );
+        return; // ⛔ AQUÍ SE DETIENE TODO
+      }
+    }
+
+    // 🔴 Validar que TODOS los usuarios tengan función
+    const usuariosSinFuncion = this.previewUsers.some(
+      u => !u.funcion || u.funcion.trim() === ''
+    );
+
+    if (usuariosSinFuncion) {
+      this.pushNotification(
+        'error',
+        'Función requerida',
+        'Todos los usuarios deben tener una función asignada.'
       );
       return;
     }
@@ -1649,10 +1771,24 @@ export class UserFormComponent implements OnInit {
     this.submitStatus = 'Validando informacion...';
     const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
+    const empresaPayload = this.resolveEmpresaPayload();
+
+    if (
+      empresaPayload.tipo === 'OTRA' &&
+      !empresaPayload.nombre?.trim()
+    ) {
+      this.pushNotification(
+        'error',
+        'Empresa requerida',
+        'Debe ingresar el nombre de la empresa.'
+      );
+      return;
+    }
+
     let empresaIdFinal: string | undefined;
 
     if (this.canSelectEmpresa) {
-      empresaIdFinal = this.empresaForm.value.empresaId ?? undefined;
+      empresaIdFinal = empresaPayload.empresaId;
       if (!empresaIdFinal) {
         this.pushNotification(
           'error',
@@ -1681,7 +1817,8 @@ export class UserFormComponent implements OnInit {
         const userData: any = {
           ...u,
           areaId: this.areaForm.value.areaId,
-          empresaId: empresaIdFinal,
+          empresaId: empresaPayload.empresaId,
+          empresa: empresaPayload,
           jornada: this.jornadaActiva.jornada,
           estatus: 'aprobado',
         };

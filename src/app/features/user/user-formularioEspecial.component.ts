@@ -31,6 +31,7 @@ import {
   JornadaActiva,
 } from '../../core/services/jornadas.service';
 import { take } from 'rxjs/operators';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 
 
@@ -48,6 +49,7 @@ import { take } from 'rxjs/operators';
     MatCardModule,
     MatTableModule,
     MatIconModule,
+    MatCheckboxModule,
   ],
   template: `
     <!-- Notificaciones -->
@@ -176,6 +178,15 @@ import { take } from 'rxjs/operators';
                     La función es requerida
                   </mat-error>
                 </mat-form-field>
+                  <!-- Opción No tiene teléfono -->
+                  <mat-checkbox
+                    formControlName="sinTelefono"
+                    (change)="onSinTelefonoChange()"
+                    class="md:col-span-2 lg:col-span-3"
+                  >
+                    No tiene teléfono
+                </mat-checkbox>
+
   
                 <!-- Campo Teléfono -->
                 <mat-form-field appearance="fill" class="w-full">
@@ -186,19 +197,22 @@ import { take } from 'rxjs/operators';
                     type="tel"
                     inputmode="numeric"
                     pattern="[0-9]*"
+                    [readonly]="manualForm.get('sinTelefono')?.value"
                     (keypress)="onlyNumbers($event)"
                   />
 
                   <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
+
                   <mat-error
                     *ngIf="
                       manualForm.get('telefono')?.invalid &&
                       manualForm.get('telefono')?.touched
                     "
                   >
-                    El teléfono es requerido
+                    El teléfono es requerido y debe tener 10 dígitos
                   </mat-error>
                 </mat-form-field>
+
   
                 <!-- Campo Email -->
                 <mat-form-field *ngIf="!isHamcoUser" appearance="fill" class="w-full">
@@ -228,7 +242,7 @@ import { take } from 'rxjs/operators';
                   <input matInput formControlName="codigoPulsera" />
                   <mat-icon matPrefix class="text-gray-400 mr-2">confirmation_number</mat-icon>
                 </mat-form-field>
-                <form [formGroup]="areaForm">
+                <div [formGroup]="areaForm">
                   <mat-form-field appearance="fill" class="w-full">
                     <mat-label class="text-gray-600"
                       >Seleccionar Área</mat-label
@@ -253,20 +267,44 @@ import { take } from 'rxjs/operators';
                       usuarios
                     </mat-hint>
                   </mat-form-field>
-                </form>
-                <form [formGroup]="empresaForm">
-              <mat-form-field appearance="fill" class="w-full">
-                <mat-label>Seleccionar Empresa</mat-label>
-                <mat-select formControlName="empresaId">
-                  <mat-option
-                    *ngFor="let empresa of empresas"
-                    [value]="empresa.id"
-                  >
-                    {{ empresa.nombre }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-            </form>
+                  </div>
+                  <!-- Empresa -->
+<div
+  [formGroup]="empresaForm"
+  class="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6"
+>
+  <!-- Select Empresa -->
+  <mat-form-field appearance="fill" class="w-full">
+    <mat-label>Seleccionar Empresa</mat-label>
+    <mat-select formControlName="empresaId">
+      <mat-option
+        *ngFor="let empresa of empresas"
+        [value]="empresa.id"
+      >
+        {{ empresa.nombre }}
+      </mat-option>
+
+      <mat-option value="OTRA" class="text-[#007A53] font-semibold">
+        ➕ Agregar nueva empresa
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Empresa Otra -->
+  <mat-form-field
+    *ngIf="showEmpresaOtra"
+    appearance="fill"
+    class="w-full"
+  >
+    <mat-label>Nombre de la empresa</mat-label>
+    <input matInput formControlName="empresaOtra" />
+    <mat-error>
+      El nombre de la empresa es requerido
+    </mat-error>
+  </mat-form-field>
+</div>
+
+
   
   
                 <!-- Botón Agregar -->
@@ -435,6 +473,7 @@ export class UserFormEspecialComponent implements OnInit {
   private usersService = inject(UsersService);
   isHamcoUser = false;
   private jornadaService = inject(JornadaActivaService);
+  readonly EMPRESA_OTRA_ID = '05mwfxhSyFDrGd72tuzO';
 
   jornadaActiva?: JornadaActiva;
 
@@ -482,6 +521,7 @@ export class UserFormEspecialComponent implements OnInit {
     icon: string;
   }> = [];
   private notificationId = 0;
+  showEmpresaOtra = false;
 
   async checkEmpresaAccess() {
     const authUser = this.authService.getCurrentUser();
@@ -500,6 +540,22 @@ export class UserFormEspecialComponent implements OnInit {
     this.isHamcoUser = userData?.apodo === 'hamco';
     this.setTableColumns();
   }
+
+  onSinTelefonoChange(): void {
+    const sinTelefono = this.manualForm.get('sinTelefono')?.value;
+    const telefonoCtrl = this.manualForm.get('telefono');
+
+    if (sinTelefono) {
+      telefonoCtrl?.setValue('0000000000');
+      telefonoCtrl?.disable({ emitEvent: false });
+    } else {
+      telefonoCtrl?.enable({ emitEvent: false });
+      telefonoCtrl?.reset();
+    }
+
+    telefonoCtrl?.updateValueAndValidity();
+  }
+
 
 
   goToDashboard(): void {
@@ -557,6 +613,7 @@ export class UserFormEspecialComponent implements OnInit {
         Validators.maxLength(10),       // opcional
       ],
     ],
+    sinTelefono: [false],
 
     email: ['', [Validators.required, Validators.email]],
     codigoPulsera: [''],
@@ -565,17 +622,30 @@ export class UserFormEspecialComponent implements OnInit {
   empresas: Empresa[] = [];
   empresaForm = this.fb.group({
     empresaId: [''],
+    empresaOtra: [''],
   });
 
   async loadEmpresas() {
     try {
-      this.empresas =
+      const empresasBD =
         await this.empresasService.getEmpresasPorUsuarioLogueado();
+
+      this.empresas = empresasBD
+        .filter(
+          e =>
+            e.id !== this.EMPRESA_OTRA_ID &&
+            e.nombre?.toUpperCase() !== 'OTRA'
+        )
+        .sort((a, b) =>
+          b.nombre.toLowerCase().localeCompare(a.nombre.toLowerCase())
+        );
+
     } catch (error) {
       console.error('Error cargando empresas:', error);
       this.empresas = [];
     }
   }
+
 
   async loadAreasByUsuario() {
     const authUser = this.authService.getCurrentUser();
@@ -652,6 +722,20 @@ export class UserFormEspecialComponent implements OnInit {
       'Listo para registrar',
       'Seleccione la empresa y el area antes de agregar usuarios.'
     );
+    this.empresaForm.get('empresaId')?.valueChanges.subscribe(value => {
+      if (value === 'OTRA') {
+        this.showEmpresaOtra = true;
+        this.empresaForm
+          .get('empresaOtra')
+          ?.setValidators([Validators.required]);
+      } else {
+        this.showEmpresaOtra = false;
+        this.empresaForm.get('empresaOtra')?.clearValidators();
+        this.empresaForm.get('empresaOtra')?.reset();
+      }
+
+      this.empresaForm.get('empresaOtra')?.updateValueAndValidity();
+    });
   }
 
   async loadFunciones() {
@@ -804,6 +888,34 @@ export class UserFormEspecialComponent implements OnInit {
         'Solo se permiten archivos CSV o XLSX.'
       );
     }
+  }
+
+  resolveEmpresaPayload(): {
+    tipo: 'NORMAL' | 'OTRA';
+    empresaId: string;
+    nombre: string;
+  } {
+    const empresaIdSeleccionada = this.empresaForm.value.empresaId;
+
+    // 🟢 Empresa normal
+    if (empresaIdSeleccionada && empresaIdSeleccionada !== 'OTRA') {
+      const empresaSeleccionada = this.empresas.find(
+        e => e.id === empresaIdSeleccionada
+      );
+
+      return {
+        tipo: 'NORMAL',
+        empresaId: empresaIdSeleccionada,
+        nombre: empresaSeleccionada?.nombre ?? '',
+      };
+    }
+
+    // 🟡 Empresa OTRA
+    return {
+      tipo: 'OTRA',
+      empresaId: this.EMPRESA_OTRA_ID, // ✅ string garantizado
+      nombre: this.empresaForm.value.empresaOtra ?? '',
+    };
   }
 
 
@@ -997,7 +1109,8 @@ export class UserFormEspecialComponent implements OnInit {
         throw new Error('Empresa no definida');
       }
 
-      const formValue = this.manualForm.value;
+      const formValue = this.manualForm.getRawValue();
+      const empresaPayload = this.resolveEmpresaPayload();
 
       // 🧱 Objeto FINAL que se guarda en Firebase
       const userData: any = {
@@ -1008,7 +1121,9 @@ export class UserFormEspecialComponent implements OnInit {
         telefono: formValue.telefono,
 
         areaId: this.areaForm.value.areaId,
-        empresaId: empresaIdFinal,
+        empresaId: empresaPayload.empresaId,
+        empresa: empresaPayload,
+
 
         // ✅ AQUÍ FALTA LA JORNADA - ESTE ES EL PROBLEMA
         jornada: this.jornadaActiva?.jornada, // ← AÑADE ESTA LÍNEA
@@ -1058,6 +1173,8 @@ export class UserFormEspecialComponent implements OnInit {
 
 
   async submitAll() {
+    // ⛔ No permitir doble envío
+    if (this.isSubmitting) return;
     if (this.areaForm.invalid) {
       this.pushNotification(
         'error',
@@ -1076,14 +1193,64 @@ export class UserFormEspecialComponent implements OnInit {
       );
       return;
     }
+    // 🔴 Validar empresa (solo si puede seleccionarla)
+    if (this.canSelectEmpresa) {
+      const empresaId = this.empresaForm.value.empresaId;
+      const empresaOtra = this.empresaForm.value.empresaOtra;
+
+      if (!empresaId) {
+        this.pushNotification(
+          'error',
+          'Empresa requerida',
+          'Debes seleccionar una empresa.'
+        );
+        return;
+      }
+
+      if (empresaId === 'OTRA' && !empresaOtra?.trim()) {
+        this.pushNotification(
+          'error',
+          'Empresa requerida',
+          'Debes escribir el nombre de la nueva empresa.'
+        );
+        return; // ⛔ AQUÍ SE DETIENE TODO
+      }
+    }
+
+    // 🔴 Validar que TODOS los usuarios tengan función
+    const usuariosSinFuncion = this.previewUsers.some(
+      u => !u.funcion || u.funcion.trim() === ''
+    );
+
+    if (usuariosSinFuncion) {
+      this.pushNotification(
+        'error',
+        'Función requerida',
+        'Todos los usuarios deben tener una función asignada.'
+      );
+      return;
+    }
 
     this.isSubmitting = true;
     const leaderData = await this.usersService.getUserByEmail(authUser.email);
 
+    const empresaPayload = this.resolveEmpresaPayload();
+
+    if (
+      empresaPayload.tipo === 'OTRA' &&
+      !empresaPayload.nombre?.trim()
+    ) {
+      this.pushNotification(
+        'error',
+        'Empresa requerida',
+        'Debe ingresar el nombre de la empresa.'
+      );
+      return;
+    }
     let empresaIdFinal: string | undefined;
 
     if (this.canSelectEmpresa) {
-      empresaIdFinal = this.empresaForm.value.empresaId ?? undefined;
+      empresaIdFinal = empresaPayload.empresaId;
       if (!empresaIdFinal) {
         this.pushNotification(
           'error',
@@ -1096,6 +1263,7 @@ export class UserFormEspecialComponent implements OnInit {
     } else {
       empresaIdFinal = leaderData?.empresaId;
     }
+
 
     if (!empresaIdFinal) {
       this.pushNotification(
@@ -1112,8 +1280,8 @@ export class UserFormEspecialComponent implements OnInit {
         const userData: any = {
           ...u,
           areaId: this.areaForm.value.areaId,
-          empresaId: empresaIdFinal,
-          // ✅ AQUÍ TAMBIÉN FALTA LA JORNADA
+          empresaId: empresaPayload.empresaId,
+          empresa: empresaPayload,
           jornada: this.jornadaActiva?.jornada, // ← AÑADE ESTA LÍNEA
           estatus: this.isHamcoUser ? 'canjeado' : 'aprobado',
         };

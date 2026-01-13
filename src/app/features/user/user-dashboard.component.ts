@@ -39,6 +39,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
 import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
+import { AreasService } from '../../core/services/areas.service';
 
 @Component({
   selector: 'app-user-dashboard',
@@ -126,6 +127,15 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
             <app-user-jornada></app-user-jornada>
           </div>
         </div>
+        <div *ngIf="!isHamcoUser" class="mt-4 flex justify-center">
+            <button
+              mat-raised-button
+              style="background-color:#007A53; color: white; padding: 0.5rem 1.5rem;"
+              (click)="goToRegistro()"
+            >
+              Registrar usuarios
+            </button>
+          </div>
 
         <!-- Formulario especial SOLO para hamco -->
         <div *ngIf="isHamcoUser" class="flex justify-center mb-8">
@@ -248,6 +258,13 @@ import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
                   <th mat-header-cell *matHeaderCellDef>Empresa</th>
                   <td mat-cell *matCellDef="let user">
                     {{ user.empresaNombre }}
+                  </td>
+                </ng-container>
+                <!-- Area -->
+                <ng-container matColumnDef="area">
+                  <th mat-header-cell *matHeaderCellDef>Area</th>
+                  <td mat-cell *matCellDef="let user">
+                    {{ user.areaNombre }}
                   </td>
                 </ng-container>
 
@@ -398,8 +415,10 @@ export class UserDashboardComponent implements OnInit {
   currentUserName = '';
   private funcionesService = inject(FuncionesService);
   private empresasService = inject(EmpresasService);
+  private areasService = inject(AreasService);
   funcionesMap = new Map<string, string>();
   empresasMap = new Map<string, string>();
+  areasMap = new Map<string, string>();
   isHamcoUser = false;
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -449,12 +468,23 @@ export class UserDashboardComponent implements OnInit {
     });
   }
 
+  async loadAreas(): Promise<void> {
+    const areas = await this.areasService.getAreas();
+
+    areas.forEach((areas) => {
+      if (areas.id) {
+        this.areasMap.set(areas.id, areas.nombre);
+      }
+    });
+  }
+
   // Modifica displayedColumns para que sea dinámico
   get displayedColumns(): string[] {
     const baseColumns = [
       'nombre',
       'email',
       'empresa',
+      'area',
       'funcion',
       'estatus',
       'fecha',
@@ -474,6 +504,7 @@ export class UserDashboardComponent implements OnInit {
   usuariosCanjeados = 0;
 
   async loadUsers(): Promise<void> {
+    const EMPRESA_OTRA_ID = '05mwfxhSyFDrGd72tuzO';
     try {
       const currentUser = this.authService.getCurrentUser();
       if (!currentUser?.email) return;
@@ -500,7 +531,11 @@ export class UserDashboardComponent implements OnInit {
           estatusNormalized,
           pdfUrlResolved,
           funcionNombre: this.funcionesMap.get(user.funcion) || '?',
-          empresaNombre: this.empresasMap.get(user.empresaId) || '?',
+          empresaNombre:
+            user.empresaId === '05mwfxhSyFDrGd72tuzO'
+              ? (user as any).empresa?.nombre || 'OTRA'
+              : this.empresasMap.get(user.empresaId) || '?',
+          areaNombre: this.areasMap.get(user.areaId) || '?',
           fecha: user.createdAt?.toDate
             ? user.createdAt.toDate().toLocaleDateString()
             : '?',
@@ -685,6 +720,7 @@ export class UserDashboardComponent implements OnInit {
     // Cargar datos iniciales - PRIMERO los mapas, LUEGO los usuarios
     await this.loadFunciones();
     await this.loadEmpresas();
+    await this.loadAreas();
     await this.loadUsers();
 
     // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO (tiempo real)
@@ -710,6 +746,7 @@ export class UserDashboardComponent implements OnInit {
           // Recargar mapas primero, luego usuarios
           await this.loadFunciones();
           await this.loadEmpresas();
+          await this.loadAreas();
           await this.loadUsers();
         }
       });
