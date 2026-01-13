@@ -50,41 +50,104 @@ import html2canvas from 'html2canvas';
     HttpClientModule,
   ],
   template: `
+    <!-- Selector de Jornadas (visible cuando hay jornadas registradas) -->
+    <div *ngIf="todasLasJornadas.length > 0" class="mb-4">
+      <label class="block text-sm font-medium text-[#007A53] mb-2">
+        <mat-icon class="align-middle mr-1">event</mat-icon>
+        Seleccionar Jornada para Consulta
+      </label>
+      <select
+        [(ngModel)]="jornadaSeleccionada"
+        (change)="onJornadaChange()"
+        class="w-full md:w-1/2 p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white"
+      >
+        <option [ngValue]="null" *ngIf="jornadaActiva">
+          🟢 Jornada Activa {{ jornadaActiva.jornada }} -
+          {{ jornadaActiva.equipo_local }} vs
+          {{ jornadaActiva.equipo_visitante }}
+        </option>
+        <option *ngFor="let jornada of todasLasJornadas" [ngValue]="jornada">
+          {{ jornada.activo ? '🟢' : '⚪' }} Jornada {{ jornada.jornada }} -
+          {{ jornada.equipo_local }} vs {{ jornada.equipo_visitante }} ({{
+            jornada.fecha
+          }})
+        </option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">🟢 = Activa | ⚪ = Histórica</p>
+    </div>
+
     <!-- Mensaje cuando no hay jornada activa -->
     <div
-      *ngIf="!jornadaActiva && !loading"
+      *ngIf="!jornadaActiva && !jornadaSeleccionada && !loading"
       class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 mb-6 text-center"
     >
       <mat-icon class="text-yellow-600 text-5xl mb-2">warning</mat-icon>
       <h3 class="text-xl font-semibold text-yellow-800 mb-2">
-        No hay jornada activa
+        No hay jornada seleccionada
       </h3>
       <p class="text-yellow-700">
-        No hay datos para mostrar. Por favor, active una jornada para ver las
-        estadísticas.
+        {{
+          todasLasJornadas.length > 0
+            ? 'Seleccione una jornada para ver las estadísticas.'
+            : 'No hay jornadas registradas en el sistema.'
+        }}
       </p>
     </div>
 
-    <!-- Cuadros Dinámicos con Conteo de Usuarios por Área (solo si hay jornada activa) -->
-    <div *ngIf="jornadaActiva && !loading" class="mb-6">
-      <div class="bg-white border-2 border-[#007A53] rounded-lg p-4 mb-4">
+    <!-- Cuadros Dinámicos con Conteo de Usuarios por Área (solo si hay jornada seleccionada o activa) -->
+    <div
+      *ngIf="(jornadaActiva || jornadaSeleccionada) && !loading"
+      class="mb-6"
+    >
+      <div
+        class="bg-white border-2 rounded-lg p-4 mb-4"
+        [class.border-green-500]="
+          (jornadaSeleccionada || jornadaActiva)?.activo
+        "
+        [class.border-gray-400]="
+          !(jornadaSeleccionada || jornadaActiva)?.activo
+        "
+      >
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-[#007A53]">
-              Jornada Activa: {{ jornadaActiva.jornada }}
+            <h3
+              class="text-lg font-semibold mb-1"
+              [class.text-[#007A53]]="
+                (jornadaSeleccionada || jornadaActiva)?.activo
+              "
+              [class.text-gray-600]="
+                !(jornadaSeleccionada || jornadaActiva)?.activo
+              "
+            >
+              {{
+                (jornadaSeleccionada || jornadaActiva)?.activo
+                  ? 'Jornada Activa'
+                  : 'Jornada Histórica'
+              }}: {{ (jornadaSeleccionada || jornadaActiva)?.jornada }}
+              <span
+                *ngIf="(jornadaSeleccionada || jornadaActiva)?.activo"
+                class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                >ACTIVA</span
+              >
+              <span
+                *ngIf="!(jornadaSeleccionada || jornadaActiva)?.activo"
+                class="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                >HISTÓRICA</span
+              >
             </h3>
             <p class="text-sm text-gray-600">
-              {{ jornadaActiva.equipo_local }} vs
-              {{ jornadaActiva.equipo_visitante }}
+              {{ (jornadaSeleccionada || jornadaActiva)?.equipo_local }} vs
+              {{ (jornadaSeleccionada || jornadaActiva)?.equipo_visitante }}
             </p>
             <p class="text-xs text-gray-500">
-              {{ jornadaActiva.fecha }} - {{ jornadaActiva.hora }}
+              {{ (jornadaSeleccionada || jornadaActiva)?.fecha }} -
+              {{ (jornadaSeleccionada || jornadaActiva)?.hora }}
             </p>
           </div>
           <div class="text-right">
             <div class="text-sm text-gray-600">Total de usuarios</div>
             <div class="text-3xl font-bold text-[#007A53]">
-              {{ getTotalUsuariosJornadaActiva() }}
+              {{ getTotalUsuariosJornadaSeleccionada() }}
             </div>
           </div>
         </div>
@@ -115,6 +178,26 @@ import html2canvas from 'html2canvas';
                     : 'usuarios asignados'
                 }}
               </p>
+              <div class="flex gap-3 mt-2 text-xs">
+                <div class="flex items-center gap-1">
+                  <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span class="text-gray-600"
+                    >Aprobados:
+                    <strong class="text-blue-600">{{
+                      area.aprobados
+                    }}</strong></span
+                  >
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span class="text-gray-600"
+                    >Canjeados:
+                    <strong class="text-green-600">{{
+                      area.canjeados
+                    }}</strong></span
+                  >
+                </div>
+              </div>
             </div>
             <mat-icon class="text-[#007A53] opacity-50">people</mat-icon>
           </div>
@@ -133,7 +216,7 @@ import html2canvas from 'html2canvas';
     </div>
 
     <!-- Botón para Mostrar/Ocultar Filtros -->
-    <div class="mb-4" *ngIf="jornadaActiva">
+    <div class="mb-4" *ngIf="jornadaSeleccionada || jornadaActiva">
       <button
         (click)="toggleFilters()"
         class="flex items-center gap-2 px-4 py-2 bg-[#007A53] text-white rounded-lg hover:bg-[#005a3d] transition-colors"
@@ -146,7 +229,7 @@ import html2canvas from 'html2canvas';
     </div>
 
     <!-- Buscador -->
-    <div class="mb-4" *ngIf="jornadaActiva">
+    <div class="mb-4" *ngIf="jornadaSeleccionada || jornadaActiva">
       <div class="relative">
         <mat-icon class="absolute left-3 top-3 text-gray-400">search</mat-icon>
         <input
@@ -160,26 +243,10 @@ import html2canvas from 'html2canvas';
     </div>
 
     <div
-      *ngIf="showFilters && jornadaActiva"
-      class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+      *ngIf="showFilters && (jornadaSeleccionada || jornadaActiva)"
+      class="bg-[#007A53] bg-opacity-5 border border-[#007A53] p-4 rounded-lg mb-4 grid grid-cols-1 md:grid-cols-3 gap-4"
     >
       <!-- Panel de Filtros -->
-      <div>
-        <label class="block text-sm font-medium text-[#007A53] mb-1">
-          Jornada
-        </label>
-        <select
-          [(ngModel)]="selectedJornada"
-          (change)="applyFilters()"
-          class="w-full p-2 border-2 border-[#007A53] rounded"
-        >
-          <option value="">Todas</option>
-          <option *ngFor="let partido of partidos" [ngValue]="partido.jornada">
-            Jornada {{ partido.jornada }} - {{ partido.equipo_local }} vs
-            {{ partido.equipo_visitante }}
-          </option>
-        </select>
-      </div>
       <div>
         <label class="block text-sm font-medium text-[#007A53] mb-1"
           >Área</label
@@ -396,10 +463,17 @@ export class SuperAdminDashboard implements OnInit {
   exportingPDF = false;
   searchTerm: string = ''; // ✅ Agrega esto
   jornadaActiva?: JornadaActiva; // Jornada activa actual
+
+  // Jornadas disponibles para consulta histórica
+  todasLasJornadas: JornadaActiva[] = [];
+  jornadaSeleccionada: JornadaActiva | null = null;
+
   areasConConteo: Array<{
     id: string;
     nombre: string;
     conteoUsuarios: number;
+    aprobados: number;
+    canjeados: number;
   }> = [];
 
   partidos: any[] = [];
@@ -489,8 +563,9 @@ export class SuperAdminDashboard implements OnInit {
         const tdNombre = document.createElement('td');
         tdNombre.style.padding = '8px';
         tdNombre.style.border = '1px solid #ddd';
-        tdNombre.textContent = `${solicitud.nombre} ${solicitud.apellidoPaterno
-          } ${solicitud.apellidoMaterno || ''}`;
+        tdNombre.textContent = `${solicitud.nombre} ${
+          solicitud.apellidoPaterno
+        } ${solicitud.apellidoMaterno || ''}`;
         row.appendChild(tdNombre);
 
         // Email
@@ -608,7 +683,8 @@ export class SuperAdminDashboard implements OnInit {
 
       if (this.filters.funcion) {
         pdf.text(
-          `Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
+          `Función: ${
+            this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
           }`,
           10,
           yPosition
@@ -829,51 +905,175 @@ export class SuperAdminDashboard implements OnInit {
   }
 
   /**
-   * Cargar la jornada activa
+   * Cargar todas las jornadas desde datos de usuarios
    */
   loadJornadaActiva(): void {
+    // Intentar obtener jornada activa desde Realtime Database
     this.jornadaActivaService.getJornadasActivas$().subscribe({
-      next: (jornadas: JornadaActiva[]) => {
-        this.jornadaActiva = jornadas.length ? jornadas[0] : undefined;
-
-        if (!this.jornadaActiva) {
-          console.warn('⚠️ No hay jornada activa');
+      next: (jornadasActivas: JornadaActiva[]) => {
+        if (jornadasActivas.length > 0) {
+          this.jornadaActiva = jornadasActivas[0];
+          console.log('✅ Jornada activa encontrada:', this.jornadaActiva);
         } else {
-          console.log('✅ Jornada activa cargada:', this.jornadaActiva);
-          // Recalcular áreas con conteo cuando cambia la jornada
-          this.calculateAreasConteo();
+          console.warn('⚠️ No hay jornada activa en Realtime Database');
+          this.jornadaActiva = undefined;
         }
+
+        // Construir jornadas desde usuarios
+        this.construirJornadasDesdeUsuarios();
+
+        // Actualizar la jornada seleccionada
+        if (this.jornadaActiva) {
+          this.jornadaSeleccionada = null; // null = usar jornada activa
+        } else if (this.todasLasJornadas.length > 0) {
+          this.jornadaSeleccionada = this.todasLasJornadas[0];
+        }
+
+        this.calculateAreasConteo();
+        this.applyFilters();
       },
       error: (error) => {
-        console.error('❌ Error cargando jornada activa:', error);
+        console.error('❌ Error cargando jornadas:', error);
         this.jornadaActiva = undefined;
+        this.todasLasJornadas = [];
       },
     });
   }
 
   /**
-   * Calcular el conteo de usuarios por área para la jornada activa
+   * Construye la lista de jornadas disponibles desde los datos de usuarios
+   */
+  construirJornadasDesdeUsuarios(): void {
+    // Obtener jornadas únicas desde los usuarios
+    const jornadasUnicas = new Set<number>();
+    this.allSolicitudes.forEach((s) => {
+      if (s.jornada !== undefined && s.jornada !== null) {
+        jornadasUnicas.add(s.jornada);
+      }
+    });
+
+    console.log(
+      '📊 Jornadas únicas encontradas en usuarios:',
+      Array.from(jornadasUnicas)
+    );
+
+    // Construir array de jornadas con información de partidos
+    this.todasLasJornadas = Array.from(jornadasUnicas)
+      .sort((a, b) => b - a) // Ordenar descendente (más reciente primero)
+      .map((numJornada) => {
+        // Buscar el partido correspondiente
+        const partido = this.partidos.find((p) => p.jornada === numJornada);
+
+        if (partido) {
+          return {
+            jornada: numJornada,
+            equipo_local: partido.equipo_local,
+            equipo_visitante: partido.equipo_visitante,
+            estadio: partido.estadio,
+            fecha: partido.fecha,
+            hora: partido.hora,
+            activo: false, // Por defecto no activa
+          } as JornadaActiva;
+        } else {
+          // Si no hay partido, crear jornada básica
+          return {
+            jornada: numJornada,
+            equipo_local: 'Desconocido',
+            equipo_visitante: 'Desconocido',
+            estadio: '',
+            fecha: '',
+            hora: '',
+            activo: false,
+          } as JornadaActiva;
+        }
+      });
+
+    console.log('✅ Jornadas construidas:', this.todasLasJornadas);
+
+    // Si hay jornada activa, marcarla
+    if (this.jornadaActiva) {
+      const jornadaActivaIndex = this.todasLasJornadas.findIndex(
+        (j) => j.jornada === this.jornadaActiva!.jornada
+      );
+      if (jornadaActivaIndex !== -1) {
+        this.todasLasJornadas[jornadaActivaIndex].activo = true;
+      }
+    }
+
+    // Seleccionar jornada por defecto
+    if (
+      !this.jornadaSeleccionada &&
+      !this.jornadaActiva &&
+      this.todasLasJornadas.length > 0
+    ) {
+      this.jornadaSeleccionada = this.todasLasJornadas[0];
+      console.log(
+        '📌 Jornada seleccionada por defecto:',
+        this.jornadaSeleccionada
+      );
+    }
+
+    // Recalcular áreas y aplicar filtros después de construir jornadas
+    this.calculateAreasConteo();
+    this.applyFilters();
+    console.log(
+      '🔄 Áreas recalculadas y filtros aplicados después de construir jornadas'
+    );
+  }
+
+  /**
+   * Calcular el conteo de usuarios por área para la jornada seleccionada
    */
   calculateAreasConteo(): void {
-    if (!this.jornadaActiva) {
+    const jornadaActual = this.getJornadaActual();
+
+    console.log('🔍 calculateAreasConteo - jornadaActual:', jornadaActual);
+    console.log(
+      '🔍 calculateAreasConteo - allSolicitudes.length:',
+      this.allSolicitudes.length
+    );
+    console.log('🔍 calculateAreasConteo - areasMap.size:', this.areasMap.size);
+
+    if (!jornadaActual) {
+      console.warn('⚠️ No hay jornada actual, areasConConteo = []');
       this.areasConConteo = [];
       return;
     }
 
-    // Filtrar usuarios de la jornada activa
-    const usuariosJornadaActiva = this.allSolicitudes.filter(
-      (s) => s.jornada === this.jornadaActiva?.jornada
+    // Filtrar usuarios APROBADOS y CANJEADOS de la jornada seleccionada
+    const usuariosJornadaActual = this.allSolicitudes.filter(
+      (s) =>
+        s.jornada === jornadaActual.jornada &&
+        (s.estatus === 'aprobado' || s.estatus === 'canjeado')
+    );
+
+    console.log(
+      `🔍 Usuarios filtrados para jornada ${jornadaActual.jornada}:`,
+      usuariosJornadaActual.length
     );
 
     // Crear un mapa para contar usuarios por área
-    const conteoMap = new Map<string, number>();
+    const conteoMap = new Map<
+      string,
+      { aprobados: number; canjeados: number }
+    >();
 
-    usuariosJornadaActiva.forEach((solicitud) => {
+    usuariosJornadaActual.forEach((solicitud) => {
       if (solicitud.areaId) {
-        const count = conteoMap.get(solicitud.areaId) || 0;
-        conteoMap.set(solicitud.areaId, count + 1);
+        const conteo = conteoMap.get(solicitud.areaId) || {
+          aprobados: 0,
+          canjeados: 0,
+        };
+        if (solicitud.estatus === 'aprobado') {
+          conteo.aprobados++;
+        } else if (solicitud.estatus === 'canjeado') {
+          conteo.canjeados++;
+        }
+        conteoMap.set(solicitud.areaId, conteo);
       }
     });
+
+    console.log('🔍 conteoMap:', conteoMap);
 
     // Crear array con todas las áreas y sus conteos
     const todasLasAreas: Area[] = [];
@@ -881,32 +1081,76 @@ export class SuperAdminDashboard implements OnInit {
       todasLasAreas.push({ id, nombre } as Area);
     });
 
-    this.areasConConteo = todasLasAreas
-      .map((area) => ({
+    console.log('🔍 Todas las áreas (antes de filtrar):', todasLasAreas.length);
+
+    const areasConConteoTemp = todasLasAreas.map((area) => {
+      const conteo = conteoMap.get(area.id || '') || {
+        aprobados: 0,
+        canjeados: 0,
+      };
+      return {
         id: area.id || '',
         nombre: area.nombre,
-        conteoUsuarios: conteoMap.get(area.id || '') || 0,
-      }))
+        aprobados: conteo.aprobados,
+        canjeados: conteo.canjeados,
+        conteoUsuarios: conteo.aprobados + conteo.canjeados,
+      };
+    });
+
+    console.log(
+      '🔍 Áreas con conteo (antes de filtrar > 0):',
+      areasConConteoTemp
+    );
+
+    this.areasConConteo = areasConConteoTemp
+      .filter((area) => area.conteoUsuarios > 0) // Solo mostrar áreas con usuarios
       .sort((a, b) => b.conteoUsuarios - a.conteoUsuarios); // Ordenar por mayor conteo
 
-    console.log('📊 Conteo de usuarios por área:', this.areasConConteo);
+    console.log(
+      '✅ areasConConteo final (después de filtrar y ordenar):',
+      this.areasConConteo
+    );
   }
 
   /**
-   * Obtener el total de usuarios de la jornada activa
+   * Obtiene la jornada actual (seleccionada o activa)
+   */
+  getJornadaActual(): JornadaActiva | null | undefined {
+    return this.jornadaSeleccionada || this.jornadaActiva;
+  }
+
+  /**
+   * Maneja el cambio de jornada en el selector
+   */
+  onJornadaChange(): void {
+    this.calculateAreasConteo();
+    this.applyFilters();
+  }
+
+  /**
+   * Obtener el total de usuarios de la jornada seleccionada
+   */
+  getTotalUsuariosJornadaSeleccionada(): number {
+    const jornadaActual = this.getJornadaActual();
+    if (!jornadaActual) return 0;
+
+    // Contar usuarios APROBADOS y CANJEADOS (procesados)
+    return this.allSolicitudes.filter(
+      (s) =>
+        s.jornada === jornadaActual.jornada &&
+        (s.estatus === 'aprobado' || s.estatus === 'canjeado')
+    ).length;
+  }
+
+  /**
+   * Obtener el total de usuarios de la jornada activa (mantener compatibilidad)
    */
   getTotalUsuariosJornadaActiva(): number {
-    if (!this.jornadaActiva) return 0;
-
-    return this.allSolicitudes.filter(
-      (s) => s.jornada === this.jornadaActiva?.jornada
-    ).length;
+    return this.getTotalUsuariosJornadaSeleccionada();
   }
 
   async ngOnInit() {
     console.log('🚀 Iniciando AdminArea Dashboard...');
-    this.loadPartidos();
-    this.loadJornadaActiva(); // Cargar jornada activa
     this.loading = true;
     try {
       await this.loadFunciones();
@@ -914,7 +1158,9 @@ export class SuperAdminDashboard implements OnInit {
       await this.loadAdminData();
       if (this.hasPermissions) {
         await this.loadSolicitudes();
-        this.calculateAreasConteo(); // Calcular conteo de usuarios por área
+        // Cargar partidos primero, luego jornadas
+        this.loadPartidos();
+        this.loadJornadaActiva();
       } else {
         console.warn('⚠️ No se cargarán solicitudes - sin permisos');
         this.loading = false;
@@ -1118,13 +1364,20 @@ export class SuperAdminDashboard implements OnInit {
       this.canViewSolicitud(solicitud)
     );
 
+    // 🔥 PRIMERO: Filtrar por jornada seleccionada/activa
+    const jornadaActual = this.getJornadaActual();
+    if (jornadaActual) {
+      filtered = filtered.filter((s) => s.jornada === jornadaActual.jornada);
+    }
+
     // Filtro de búsqueda por ID, nombre o correo
     if (this.searchTerm && this.searchTerm.trim() !== '') {
       const searchLower = this.searchTerm.toLowerCase().trim();
       filtered = filtered.filter((s) => {
         const id = s.id?.toLowerCase() || '';
-        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${s.apellidoMaterno || ''
-          }`.toLowerCase();
+        const nombre = `${s.nombre || ''} ${s.apellidoPaterno || ''} ${
+          s.apellidoMaterno || ''
+        }`.toLowerCase();
         const email = s.email?.toLowerCase() || '';
 
         return (
@@ -1148,10 +1401,6 @@ export class SuperAdminDashboard implements OnInit {
       filtered = filtered.filter(
         (s) => s.registrantEmail === this.filters.registrante
       );
-    }
-    // ✅ FILTRO POR JORNADA - Asegúrate de manejar undefined
-    if (this.selectedJornada !== '') {
-      filtered = filtered.filter((s) => s.jornada === this.selectedJornada);
     }
 
     this.filteredSolicitudes = filtered;
