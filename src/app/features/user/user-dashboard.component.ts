@@ -131,15 +131,7 @@ import { AreasService } from '../../core/services/areas.service';
             <app-user-jornada></app-user-jornada>
           </div>
         </div>
-        <div *ngIf="!isHamcoUser" class="mt-4 flex justify-center">
-            <button
-              mat-raised-button
-              style="background-color:#007A53; color: white; padding: 0.5rem 1.5rem;"
-              (click)="goToRegistro()"
-            >
-              Registrar usuarios
-            </button>
-          </div>
+        
 
         <!-- Formulario especial SOLO para hamco -->
         <div *ngIf="isHamcoUser" class="flex justify-center mb-8">
