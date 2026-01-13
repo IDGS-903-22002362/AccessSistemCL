@@ -178,40 +178,23 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
                     La función es requerida
                   </mat-error>
                 </mat-form-field>
-                  <!-- Opción No tiene teléfono -->
-                  <mat-checkbox
-                    formControlName="sinTelefono"
-                    (change)="onSinTelefonoChange()"
-                    class="md:col-span-2 lg:col-span-3"
-                  >
-                    No tiene teléfono
-                </mat-checkbox>
+                  
 
   
                 <!-- Campo Teléfono -->
                 <mat-form-field appearance="fill" class="w-full">
-                  <mat-label class="text-gray-600">Teléfono</mat-label>
+                  <mat-label class="text-gray-600">Teléfono (opcional)</mat-label>
                   <input
                     matInput
                     formControlName="telefono"
                     type="tel"
                     inputmode="numeric"
                     pattern="[0-9]*"
-                    [readonly]="manualForm.get('sinTelefono')?.value"
                     (keypress)="onlyNumbers($event)"
                   />
-
                   <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
-
-                  <mat-error
-                    *ngIf="
-                      manualForm.get('telefono')?.invalid &&
-                      manualForm.get('telefono')?.touched
-                    "
-                  >
-                    El teléfono es requerido y debe tener 10 dígitos
-                  </mat-error>
                 </mat-form-field>
+
 
   
                 <!-- Campo Email -->
@@ -269,40 +252,40 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
                   </mat-form-field>
                   </div>
                   <!-- Empresa -->
-<div
-  [formGroup]="empresaForm"
-  class="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6"
->
-  <!-- Select Empresa -->
-  <mat-form-field appearance="fill" class="w-full">
-    <mat-label>Seleccionar Empresa</mat-label>
-    <mat-select formControlName="empresaId">
-      <mat-option
-        *ngFor="let empresa of empresas"
-        [value]="empresa.id"
-      >
-        {{ empresa.nombre }}
-      </mat-option>
+                    <div
+                      [formGroup]="empresaForm"
+                      class="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6"
+                    >
+                      <!-- Select Empresa -->
+                      <mat-form-field appearance="fill" class="w-full">
+                        <mat-label>Seleccionar Empresa</mat-label>
+                        <mat-select formControlName="empresaId">
+                          <mat-option
+                            *ngFor="let empresa of empresas"
+                            [value]="empresa.id"
+                          >
+                            {{ empresa.nombre }}
+                          </mat-option>
 
-      <mat-option value="OTRA" class="text-[#007A53] font-semibold">
-        ➕ Agregar nueva empresa
-      </mat-option>
-    </mat-select>
-  </mat-form-field>
+                          <mat-option value="OTRA" class="text-[#007A53] font-semibold">
+                            ➕ Agregar nueva empresa
+                          </mat-option>
+                        </mat-select>
+                      </mat-form-field>
 
-  <!-- Empresa Otra -->
-  <mat-form-field
-    *ngIf="showEmpresaOtra"
-    appearance="fill"
-    class="w-full"
-  >
-    <mat-label>Nombre de la empresa</mat-label>
-    <input matInput formControlName="empresaOtra" />
-    <mat-error>
-      El nombre de la empresa es requerido
-    </mat-error>
-  </mat-form-field>
-</div>
+                      <!-- Empresa Otra -->
+                      <mat-form-field
+                        *ngIf="showEmpresaOtra"
+                        appearance="fill"
+                        class="w-full"
+                      >
+                        <mat-label>Nombre de la empresa</mat-label>
+                        <input matInput formControlName="empresaOtra" />
+                        <mat-error>
+                          El nombre de la empresa es requerido
+                        </mat-error>
+                      </mat-form-field>
+                    </div>
 
 
   
@@ -541,6 +524,8 @@ export class UserFormEspecialComponent implements OnInit {
     this.setTableColumns();
   }
 
+
+  /**
   onSinTelefonoChange(): void {
     const sinTelefono = this.manualForm.get('sinTelefono')?.value;
     const telefonoCtrl = this.manualForm.get('telefono');
@@ -555,6 +540,7 @@ export class UserFormEspecialComponent implements OnInit {
 
     telefonoCtrl?.updateValueAndValidity();
   }
+     */
 
 
 
@@ -604,16 +590,7 @@ export class UserFormEspecialComponent implements OnInit {
     apellidoPaterno: ['', Validators.required],
     apellidoMaterno: [''],
     funcion: ['', Validators.required],
-    telefono: [
-      '',
-      [
-        Validators.required,
-        Validators.pattern('^[0-9]+$'), // solo números
-        Validators.minLength(10),       // opcional (teléfono típico MX)
-        Validators.maxLength(10),       // opcional
-      ],
-    ],
-    sinTelefono: [false],
+    telefono: [''],
 
     email: ['', [Validators.required, Validators.email]],
     codigoPulsera: [''],
@@ -637,8 +614,9 @@ export class UserFormEspecialComponent implements OnInit {
             e.nombre?.toUpperCase() !== 'OTRA'
         )
         .sort((a, b) =>
-          b.nombre.toLowerCase().localeCompare(a.nombre.toLowerCase())
+          a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase())
         );
+
 
     } catch (error) {
       console.error('Error cargando empresas:', error);

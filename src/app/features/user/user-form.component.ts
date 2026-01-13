@@ -145,8 +145,8 @@ import { take } from 'rxjs/operators';
             <p class="text-sm text-gray-600">
               Este paso solo aplica si tu rol permite elegir empresa.
             </p>
-            <form [formGroup]="empresaForm">
-              <mat-form-field appearance="fill" class="w-full">
+            <form [formGroup]="empresaForm" class="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <mat-form-field appearance="fill" class="w-full empresa-field">
                 <mat-label>Seleccionar Empresa</mat-label>
                 <mat-select formControlName="empresaId">
                   <mat-option
@@ -170,7 +170,7 @@ import { take } from 'rxjs/operators';
               <mat-form-field
                 *ngIf="showEmpresaOtra"
                 appearance="fill"
-                class="w-full mt-4"
+                class="w-full empresa-field"
               >
                 <mat-label>Nombre de la empresa</mat-label>
                 <input matInput formControlName="empresaOtra" />

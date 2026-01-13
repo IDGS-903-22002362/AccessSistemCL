@@ -13,6 +13,8 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
+
 
 import { AuthService } from '../../core/services/auth.service';
 import {
@@ -781,245 +783,138 @@ export class ReportesAnalyticsComponent implements OnInit {
     this.exportingPDF = true;
 
     try {
-      // Crear un título para el PDF
-      const title = `Reporte de Solicitudes - ${new Date().toLocaleDateString()}`;
-
-      // Crear un elemento temporal para la tabla completa
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '210mm'; // Ancho A4
-      tempDiv.style.backgroundColor = '#ffffff';
-
-      // Crear tabla con TODOS los registros filtrados
-      const table = document.createElement('table');
-      table.style.width = '100%';
-      table.style.borderCollapse = 'collapse';
-      table.style.fontSize = '12px';
-
-      // Encabezados
-      const thead = document.createElement('thead');
-      thead.style.backgroundColor = '#007A53';
-      thead.style.color = 'white';
-
-      const headerRow = document.createElement('tr');
-      [
-        'Nombre',
-        'Email',
-        'Área',
-        'Función',
-        'Teléfono',
-        'Estado',
-        'Jornada',
-      ].forEach((headerText) => {
-        const th = document.createElement('th');
-        th.style.padding = '8px';
-        th.style.textAlign = 'left';
-        th.style.border = '1px solid #ddd';
-        th.textContent = headerText;
-        headerRow.appendChild(th);
-      });
-
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      // Cuerpo de la tabla con TODOS los registros filtrados
-      const tbody = document.createElement('tbody');
-
-      this.filteredSolicitudes.forEach((solicitud, index) => {
-        const row = document.createElement('tr');
-        row.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9';
-
-        // Nombre
-        const tdNombre = document.createElement('td');
-        tdNombre.style.padding = '8px';
-        tdNombre.style.border = '1px solid #ddd';
-        tdNombre.textContent = `${solicitud.nombre} ${
-          solicitud.apellidoPaterno
-        } ${solicitud.apellidoMaterno || ''}`;
-        row.appendChild(tdNombre);
-
-        // Email
-        const tdEmail = document.createElement('td');
-        tdEmail.style.padding = '8px';
-        tdEmail.style.border = '1px solid #ddd';
-        tdEmail.textContent = solicitud.email || '';
-        row.appendChild(tdEmail);
-
-        // Área
-        const tdArea = document.createElement('td');
-        tdArea.style.padding = '8px';
-        tdArea.style.border = '1px solid #ddd';
-        tdArea.textContent =
-          this.areasMap.get(solicitud.areaId) || solicitud.areaId || '';
-        row.appendChild(tdArea);
-
-        // Función
-        const tdFuncion = document.createElement('td');
-        tdFuncion.style.padding = '8px';
-        tdFuncion.style.border = '1px solid #ddd';
-        tdFuncion.textContent =
-          this.funcionesMap.get(solicitud.funcion) || solicitud.funcion || '';
-        row.appendChild(tdFuncion);
-
-        // Teléfono
-        const tdTelefono = document.createElement('td');
-        tdTelefono.style.padding = '8px';
-        tdTelefono.style.border = '1px solid #ddd';
-        tdTelefono.textContent = solicitud.telefono || '';
-        row.appendChild(tdTelefono);
-
-        // Estado
-        const tdEstado = document.createElement('td');
-        tdEstado.style.padding = '8px';
-        tdEstado.style.border = '1px solid #ddd';
-        tdEstado.textContent = solicitud.estatus || '';
-        row.appendChild(tdEstado);
-
-        // Jornada
-        // En la parte donde creas la celda de Jornada
-        const tdJornada = document.createElement('td');
-        tdJornada.style.padding = '8px';
-        tdJornada.style.border = '1px solid #ddd';
-        // Convertir explícitamente a string
-        tdJornada.textContent = solicitud.jornada
-          ? String(solicitud.jornada)
-          : 'No asignada';
-        row.appendChild(tdJornada);
-
-        tbody.appendChild(row);
-      });
-
-      table.appendChild(tbody);
-      tempDiv.appendChild(table);
-      document.body.appendChild(tempDiv);
-
-      // Opciones para html2canvas
-      const options = {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: tempDiv.offsetWidth,
-        windowWidth: 210 * 3.78, // Convertir mm a px (210mm * 3.78px/mm)
-      };
-
-      // Convertir a canvas
-      const canvas = await html2canvas(tempDiv, options);
-
-      // Calcular dimensiones
-      const imgWidth = 210; // A4 en mm
-      const pageHeight = 297; // A4 en mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Crear PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      // Agregar título
+      /* =========================
+         TÍTULO
+      ========================= */
+      const title = 'Reporte de Solicitudes';
       pdf.setFontSize(16);
       pdf.setTextColor(0, 122, 83);
-      pdf.text(title, 10, 10);
-      // 👉 CORREO DEL REGISTRANTE (debajo del título)
-      const registrantEmail =
+      pdf.text(title, 14, 15);
+
+      /* =========================
+         SUBTÍTULO / METADATA
+      ========================= */
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+
+      const fecha = new Date().toLocaleDateString('es-MX');
+      pdf.text(`Fecha: ${fecha}`, 14, 22);
+
+      const registrante =
         this.filters.registrante ||
         this.filteredSolicitudes[0]?.registrantEmail ||
         'No especificado';
 
-      // Agregar información de filtros
-      pdf.setFontSize(10);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text(`Registrado por: ${registrantEmail}`, 10, 16);
+      pdf.text(`Registrante: ${registrante}`, 14, 27);
 
-      let yPosition = 20;
-
-      // Agregar detalles de los filtros aplicados
-      if (this.selectedJornada) {
-        pdf.text(`Jornada: ${this.selectedJornada}`, 10, yPosition);
-        yPosition += 5;
-      }
+      let y = 32;
 
       if (this.filters.area) {
         pdf.text(
           `Área: ${this.areasMap.get(this.filters.area) || this.filters.area}`,
-          10,
-          yPosition
+          14,
+          y
         );
-        yPosition += 5;
+        y += 5;
       }
 
       if (this.filters.estado) {
-        pdf.text(`Estado: ${this.filters.estado}`, 10, yPosition);
-        yPosition += 5;
+        pdf.text(`Estado: ${this.filters.estado}`, 14, y);
+        y += 5;
       }
 
       if (this.filters.funcion) {
         pdf.text(
-          `Función: ${
-            this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
+          `Función: ${this.funcionesMap.get(this.filters.funcion) || this.filters.funcion
           }`,
-          10,
-          yPosition
+          14,
+          y
         );
-        yPosition += 5;
+        y += 5;
       }
 
-      if (this.filters.registrante) {
-        pdf.text(`Registrante: ${this.filters.registrante}`, 10, yPosition);
-        yPosition += 5;
+      if (this.getJornadaActual()) {
+        pdf.text(
+          `Jornada: ${this.getJornadaActual()!.jornada}`,
+          14,
+          y
+        );
+        y += 5;
       }
 
-      // Agregar información general
       pdf.text(
         `Total de registros: ${this.filteredSolicitudes.length}`,
-        10,
-        yPosition + 5
+        14,
+        y + 5
       );
-      yPosition += 10;
 
-      // Agregar la imagen de la tabla
-      const imgData = canvas.toDataURL('image/png');
+      /* =========================
+         TABLA
+      ========================= */
+      autoTable(pdf, {
+        startY: y + 10,
+        head: [[
+          'Nombre',
+          'Email',
+          'Área',
+          'Función',
+          'Teléfono',
+          'Estado',
+          'Jornada'
+        ]],
+        body: this.filteredSolicitudes.map(s => [
+          `${s.nombre} ${s.apellidoPaterno} ${s.apellidoMaterno || ''}`,
+          s.email || '',
+          this.areasMap.get(s.areaId) || s.areaId || '',
+          this.funcionesMap.get(s.funcion) || s.funcion || '',
+          s.telefono || '',
+          s.estatus || '',
+          s.jornada ?? 'No asignada'
+        ]),
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [0, 122, 83],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data) => {
+          const pageCount = pdf.getNumberOfPages();
+          pdf.setFontSize(9);
+          pdf.text(
+            `Página ${pageCount}`,
+            pdf.internal.pageSize.getWidth() - 20,
+            pdf.internal.pageSize.getHeight() - 10
+          );
+        },
+      });
 
-      // Calcular si la tabla cabe en una página
-      if (imgHeight < pageHeight - yPosition) {
-        // Cabe en una página
-        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth - 20, imgHeight);
-      } else {
-        // Necesita múltiples páginas
-        let heightLeft = imgHeight;
-        let position = yPosition;
-        let pageCount = 1;
+      /* =========================
+         GUARDAR
+      ========================= */
+      const fileName = `reporte_solicitudes_${new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')}.pdf`;
 
-        while (heightLeft > 0) {
-          pdf.addImage(imgData, 'PNG', 10, position, imgWidth - 20, imgHeight);
-          heightLeft -= pageHeight - position;
-
-          if (heightLeft > 0) {
-            pdf.addPage();
-            position = -((pageHeight - yPosition) * pageCount - yPosition);
-            pageCount++;
-          }
-        }
-      }
-
-      // Eliminar el elemento temporal
-      document.body.removeChild(tempDiv);
-
-      // Guardar el PDF
-      const fecha = new Date().toISOString().split('T')[0];
-      const hora = new Date()
-        .toLocaleTimeString('es-MX', { hour12: false })
-        .replace(/:/g, '-');
-      const fileName = `reporte_solicitudes_${fecha}_${hora}.pdf`;
       pdf.save(fileName);
 
-      console.log('✅ PDF exportado exitosamente con todos los registros');
+      console.log('✅ PDF generado con autoTable correctamente');
     } catch (error) {
-      console.error('❌ Error al exportar PDF:', error);
-      alert('Error al generar el PDF. Por favor, intenta nuevamente.');
+      console.error('❌ Error al generar PDF:', error);
+      alert('Error al generar el PDF.');
     } finally {
       this.exportingPDF = false;
     }
   }
+
 
   // Bar Chart - Solicitudes por área
   barChartType: ChartType = 'bar';
