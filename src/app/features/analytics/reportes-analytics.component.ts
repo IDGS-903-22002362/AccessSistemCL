@@ -26,11 +26,19 @@ import {
   FuncionesService,
   Funcion,
 } from '../../core/services/funciones.service';
-import { PartidosService } from '../../core/services/partidos.service';
+import {
+  PartidosService,
+  Partido,
+  TorneoTipo,
+} from '../../core/services/partidos.service';
 import {
   JornadaActivaService,
   JornadaActiva,
 } from '../../core/services/jornadas.service';
+import { firstValueFrom } from 'rxjs';
+import { take } from 'rxjs/operators';
+/** Margen en días alrededor del rango de fechas del torneo para filtrar createdAt */
+const TORNEO_FECHA_MARGEN_DIAS = 14;
 
 interface AreaConConteo {
   id: string;
@@ -162,48 +170,108 @@ interface AreaConConteo {
           <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Reportes</h2>
 
-            <!-- Selector de Jornadas (visible cuando no hay jornada activa o para consultar historial) -->
-            <div *ngIf="todasLasJornadas.length > 0" class="mb-4">
-              <label class="block text-sm font-medium text-[#007A53] mb-2">
-                <mat-icon class="align-middle mr-1">event</mat-icon>
-                Seleccionar Jornada
-              </label>
-              <select
-                [(ngModel)]="jornadaSeleccionada"
-                (change)="onJornadaChange()"
-                class="w-full md:w-1/2 p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white"
+            <!-- Filtros de historial: Año + Torneo + Jornada -->
+            <div *ngIf="aniosDisponibles.length > 0" class="mb-4">
+              <div
+                class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3"
               >
-                <option [ngValue]="null" *ngIf="jornadaActiva">
-                  🟢 Jornada Activa {{ jornadaActiva.jornada }} -
-                  {{ jornadaActiva.equipo_local }} vs
-                  {{ jornadaActiva.equipo_visitante }}
-                </option>
-                <option
-                  *ngFor="let jornada of todasLasJornadas"
-                  [ngValue]="jornada"
-                >
-                  {{ jornada.activo ? '🟢' : '⚪' }} Jornada
-                  {{ jornada.jornada }} - {{ jornada.equipo_local }} vs
-                  {{ jornada.equipo_visitante }} ({{ jornada.fecha }})
-                </option>
-              </select>
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-2">
+                    <mat-icon class="align-middle mr-1">calendar_today</mat-icon>
+                    Año
+                  </label>
+                  <select
+                    [(ngModel)]="anioSeleccionado"
+                    (ngModelChange)="onAnioChange()"
+                    class="w-full p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white"
+                  >
+                    <option *ngFor="let anio of aniosDisponibles" [ngValue]="anio">
+                      {{ anio }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-2">
+                    <mat-icon class="align-middle mr-1">emoji_events</mat-icon>
+                    Torneo
+                  </label>
+                  <select
+                    [(ngModel)]="torneoSeleccionado"
+                    (ngModelChange)="onTorneoChange()"
+                    class="w-full p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white"
+                  >
+                    <option
+                      *ngFor="let torneo of torneosDisponibles"
+                      [ngValue]="torneo"
+                    >
+                      {{ torneo === 'apertura' ? 'Apertura' : 'Clausura' }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-[#007A53] mb-2">
+                    <mat-icon class="align-middle mr-1">event</mat-icon>
+                    Jornada
+                  </label>
+                  <select
+                    [(ngModel)]="jornadaSeleccionada"
+                    (change)="onJornadaChange()"
+                    [disabled]="todasLasJornadas.length === 0 && !jornadaActiva"
+                    class="w-full p-3 border-2 border-[#007A53] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007A53] bg-white disabled:opacity-50"
+                  >
+                    <option [ngValue]="null" *ngIf="jornadaActiva">
+                      🟢 Jornada Activa {{ jornadaActiva.jornada }} -
+                      {{ jornadaActiva.equipo_local }} vs
+                      {{ jornadaActiva.equipo_visitante }}
+                    </option>
+                    <option
+                      *ngFor="let jornada of todasLasJornadas"
+                      [ngValue]="jornada"
+                    >
+                      {{ jornada.activo ? '🟢' : '⚪' }} Jornada
+                      {{ jornada.jornada }} - {{ jornada.equipo_local }} vs
+                      {{ jornada.equipo_visitante }} ({{ jornada.fecha }})
+                    </option>
+                  </select>
+                </div>
+              </div>
               <p class="text-xs text-gray-500 mt-1">
-                🟢 = Activa | ⚪ = Histórica
+                Historial por año y torneo · 🟢 = Activa | ⚪ = Histórica
               </p>
             </div>
 
-            <!-- Mensaje cuando no hay jornadas disponibles -->
+            <!-- Mensaje cuando no hay jornadas en el torneo seleccionado -->
             <div
-              *ngIf="todasLasJornadas.length === 0 && !loading"
-              class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 text-center"
+              *ngIf="
+                aniosDisponibles.length > 0 &&
+                todasLasJornadas.length === 0 &&
+                !jornadaActiva &&
+                !loading &&
+                !loadingPartidos
+              "
+              class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 text-center mb-4"
             >
               <mat-icon class="text-yellow-600 text-5xl mb-2">warning</mat-icon>
               <h3 class="text-xl font-semibold text-yellow-800 mb-2">
-                No hay jornadas registradas
+                No hay jornadas en este torneo
               </h3>
               <p class="text-yellow-700">
-                No hay datos para mostrar. Por favor, registre una jornada
-                primero.
+                No hay partidos registrados para
+                {{ torneoSeleccionado === 'apertura' ? 'Apertura' : 'Clausura' }}
+                {{ anioSeleccionado }}.
+              </p>
+            </div>
+
+            <div
+              *ngIf="aniosDisponibles.length === 0 && !loading"
+              class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 text-center mb-4"
+            >
+              <mat-icon class="text-yellow-600 text-5xl mb-2">warning</mat-icon>
+              <h3 class="text-xl font-semibold text-yellow-800 mb-2">
+                No hay torneos disponibles
+              </h3>
+              <p class="text-yellow-700">
+                No se encontraron años en el calendario de partidos.
               </p>
             </div>
 
@@ -698,13 +766,23 @@ export class ReportesAnalyticsComponent implements OnInit {
   filteredSolicitudes: UserAccess[] = [];
   areas: Area[] = [];
   funciones: Funcion[] = [];
-  partidos: any[] = [];
+  partidos: Partido[] = [];
   jornadaActiva: JornadaActiva | null = null;
   areasConConteo: AreaConConteo[] = [];
 
-  // Jornadas disponibles para consulta histórica
+  // Historial: año + torneo + jornadas del calendario RTDB
+  aniosDisponibles: string[] = [];
+  torneosDisponibles: TorneoTipo[] = [];
+  anioSeleccionado = '';
+  torneoSeleccionado: TorneoTipo | '' = '';
+  loadingPartidos = false;
+  torneoFechaInicio: Date | null = null;
+  torneoFechaFin: Date | null = null;
+
+  // Jornadas del torneo seleccionado
   todasLasJornadas: JornadaActiva[] = [];
   jornadaSeleccionada: JornadaActiva | null = null;
+  private filtrosCalendarioListos = false;
 
   // Maps para nombres
   areasMap = new Map<string, string>();
@@ -963,7 +1041,6 @@ export class ReportesAnalyticsComponent implements OnInit {
     try {
       this.loading = true;
 
-      // Cargar datos
       const [solicitudes, areas, funciones] = await Promise.all([
         this.usersAccesService.getUsers(),
         this.areasService.getAreas(),
@@ -974,45 +1051,11 @@ export class ReportesAnalyticsComponent implements OnInit {
       this.areas = areas;
       this.funciones = funciones;
 
-      // Cargar partidos desde Realtime Database
-      this.partidosService.getPartidos$().subscribe((partidos) => {
-        this.partidos = partidos;
-        console.log('✅ Partidos cargados:', partidos);
-
-        // Construir jornadas desde los datos de usuarios
-        this.construirJornadasDesdeUsuarios();
-      });
-
-      // Intentar obtener jornada activa desde Realtime Database
-      this.jornadaActivaService
-        .getJornadasActivas$()
-        .subscribe((jornadasActivas) => {
-          if (jornadasActivas.length > 0) {
-            this.jornadaActiva = jornadasActivas[0];
-            console.log('✅ Jornada activa encontrada:', this.jornadaActiva);
-          } else {
-            console.warn('⚠️ No hay jornada activa en Realtime Database');
-            this.jornadaActiva = null;
-          }
-
-          // Actualizar la jornada seleccionada
-          if (this.jornadaActiva) {
-            this.jornadaSeleccionada = null; // null = usar jornada activa
-          } else if (this.todasLasJornadas.length > 0) {
-            this.jornadaSeleccionada = this.todasLasJornadas[0];
-          }
-
-          this.calculateAreasConteo();
-          this.applyFilters();
-        });
-
-      // Crear mapas de nombres
       this.areasMap = new Map(areas.map((a: Area) => [a.id!, a.nombre]));
       this.funcionesMap = new Map(
         funciones.map((f: Funcion) => [f.id!, f.nombre])
       );
 
-      // Extraer valores únicos para filtros
       this.uniqueAreas = [
         ...new Set(
           solicitudes.map((s: UserAccess) => s.areaId).filter(Boolean)
@@ -1028,6 +1071,28 @@ export class ReportesAnalyticsComponent implements OnInit {
           solicitudes.map((s: UserAccess) => s.registrantEmail).filter(Boolean)
         ),
       ] as string[];
+
+      // Primero jornada activa, luego defaults año/torneo desde el calendario
+      this.jornadaActivaService
+        .getJornadasActivas$()
+        .subscribe(async (jornadasActivas) => {
+          const previousKey = this.getJornadaActivaKey();
+          if (jornadasActivas.length > 0) {
+            this.jornadaActiva = jornadasActivas[0];
+          } else {
+            this.jornadaActiva = null;
+          }
+          const nextKey = this.getJornadaActivaKey();
+
+          if (!this.filtrosCalendarioListos || previousKey !== nextKey) {
+            await this.inicializarFiltrosPorDefecto();
+            this.filtrosCalendarioListos = true;
+          } else {
+            this.syncJornadaSeleccionadaConActiva();
+            this.calculateAreasConteo();
+            this.applyFilters();
+          }
+        });
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -1035,18 +1100,235 @@ export class ReportesAnalyticsComponent implements OnInit {
     }
   }
 
+  private getJornadaActivaKey(): string {
+    if (!this.jornadaActiva) return '';
+    return [
+      this.jornadaActiva.jornada,
+      this.jornadaActiva.fecha,
+      this.jornadaActiva.equipo_local,
+      this.jornadaActiva.equipo_visitante,
+    ].join('|');
+  }
+
+  /**
+   * Defaults al entrar: año/torneo del partido activo (o año reciente + apertura).
+   * jornadaSeleccionada = null → opción "Jornada Activa".
+   */
+  private async inicializarFiltrosPorDefecto(): Promise<void> {
+    try {
+      const anios = await firstValueFrom(
+        this.partidosService.getAniosDisponibles$().pipe(take(1))
+      );
+      this.aniosDisponibles = anios;
+
+      if (anios.length === 0) {
+        this.anioSeleccionado = '';
+        this.torneoSeleccionado = '';
+        this.todasLasJornadas = [];
+        this.partidos = [];
+        this.calculateAreasConteo();
+        this.applyFilters();
+        return;
+      }
+
+      if (this.jornadaActiva) {
+        const resolved =
+          await this.partidosService.resolveTorneoDeJornadaActiva(
+            this.jornadaActiva
+          );
+
+        if (resolved) {
+          this.anioSeleccionado = resolved.year;
+          this.torneoSeleccionado = resolved.torneo;
+          this.torneosDisponibles = await firstValueFrom(
+            this.partidosService
+              .getTorneosDisponibles$(resolved.year)
+              .pipe(take(1))
+          );
+          this.partidos = resolved.partidos;
+          this.actualizarRangoFechasTorneo();
+          this.construirJornadasDesdePartidos();
+          return;
+        }
+      }
+
+      // Sin activa o sin match: año más reciente + preferir apertura
+      this.anioSeleccionado = anios[0];
+      this.cargarTorneosDelAnio(true);
+    } catch (error) {
+      console.error('Error inicializando filtros por defecto:', error);
+      this.calculateAreasConteo();
+      this.applyFilters();
+    }
+  }
+
+  /**
+   * Carga apertura/clausura del año seleccionado.
+   * @param preferDefaultTorneo si true, elige apertura (o el primero disponible)
+   */
+  cargarTorneosDelAnio(preferDefaultTorneo = false): void {
+    if (!this.anioSeleccionado) return;
+
+    this.partidosService
+      .getTorneosDisponibles$(this.anioSeleccionado)
+      .subscribe((torneos) => {
+        this.torneosDisponibles = torneos;
+        if (torneos.length === 0) {
+          this.torneoSeleccionado = '';
+          this.partidos = [];
+          this.todasLasJornadas = [];
+          this.jornadaSeleccionada = null;
+          this.calculateAreasConteo();
+          this.applyFilters();
+          return;
+        }
+
+        if (
+          preferDefaultTorneo ||
+          !this.torneoSeleccionado ||
+          !torneos.includes(this.torneoSeleccionado as TorneoTipo)
+        ) {
+          this.torneoSeleccionado = torneos.includes('apertura')
+            ? 'apertura'
+            : torneos[0];
+        }
+
+        this.cargarPartidosDelTorneo();
+      });
+  }
+
+  cargarPartidosDelTorneo(): void {
+    if (!this.anioSeleccionado || !this.torneoSeleccionado) return;
+
+    this.loadingPartidos = true;
+    this.partidosService
+      .getPartidos$(this.anioSeleccionado, this.torneoSeleccionado)
+      .subscribe({
+        next: (partidos) => {
+          this.partidos = partidos ?? [];
+          this.actualizarRangoFechasTorneo();
+          this.construirJornadasDesdePartidos();
+          this.loadingPartidos = false;
+        },
+        error: (err) => {
+          console.error('Error cargando partidos:', err);
+          this.partidos = [];
+          this.todasLasJornadas = [];
+          this.loadingPartidos = false;
+          this.calculateAreasConteo();
+          this.applyFilters();
+        },
+      });
+  }
+
+  onAnioChange(): void {
+    this.jornadaSeleccionada = null;
+    this.cargarTorneosDelAnio(true);
+  }
+
+  onTorneoChange(): void {
+    this.jornadaSeleccionada = null;
+    this.cargarPartidosDelTorneo();
+  }
+
+  /**
+   * Parsea fechas de partido (DD/MM/YYYY o YYYY-MM-DD).
+   */
+  private parseFechaPartido(fecha: string | undefined | null): Date | null {
+    if (!fecha || typeof fecha !== 'string') return null;
+    const trimmed = fecha.trim();
+    const dmy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+      const day = Number(dmy[1]);
+      const month = Number(dmy[2]) - 1;
+      const year = Number(dmy[3]);
+      const date = new Date(year, month, day);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+      return isNaN(date.getTime()) ? null : date;
+    }
+    const fallback = new Date(trimmed);
+    return isNaN(fallback.getTime()) ? null : fallback;
+  }
+
+  private timestampToDate(value: unknown): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'object' && value !== null && 'toDate' in value) {
+      try {
+        return (value as { toDate: () => Date }).toDate();
+      } catch {
+        return null;
+      }
+    }
+    if (typeof value === 'object' && value !== null && 'seconds' in value) {
+      const seconds = (value as { seconds: number }).seconds;
+      return new Date(seconds * 1000);
+    }
+    if (typeof value === 'number') return new Date(value);
+    if (typeof value === 'string') {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }
+
+  actualizarRangoFechasTorneo(): void {
+    const fechas = this.partidos
+      .map((p) => this.partidosService.parseFechaPartido(p.fecha))
+      .filter((d): d is Date => d !== null);
+
+    if (fechas.length === 0) {
+      this.torneoFechaInicio = null;
+      this.torneoFechaFin = null;
+      return;
+    }
+
+    const min = new Date(Math.min(...fechas.map((d) => d.getTime())));
+    const max = new Date(Math.max(...fechas.map((d) => d.getTime())));
+    min.setDate(min.getDate() - TORNEO_FECHA_MARGEN_DIAS);
+    max.setDate(max.getDate() + TORNEO_FECHA_MARGEN_DIAS);
+    min.setHours(0, 0, 0, 0);
+    max.setHours(23, 59, 59, 999);
+    this.torneoFechaInicio = min;
+    this.torneoFechaFin = max;
+  }
+
+  /**
+   * Evita mezclar jornadas homónimas de otras temporadas usando createdAt.
+   * Se aplica siempre, también con la opción "Jornada Activa".
+   */
+  perteneceAlTorneoSeleccionado(solicitud: UserAccess): boolean {
+    if (!this.torneoFechaInicio || !this.torneoFechaFin) {
+      return false;
+    }
+    const created = this.timestampToDate(solicitud.createdAt);
+    if (!created) {
+      return false;
+    }
+    return (
+      created >= this.torneoFechaInicio && created <= this.torneoFechaFin
+    );
+  }
+
+  private syncJornadaSeleccionadaConActiva(): void {
+    if (this.jornadaActiva) {
+      this.todasLasJornadas.forEach((j) => {
+        j.activo = this.partidosService.partidoCoincideConJornada(j, this.jornadaActiva!);
+      });
+      if (this.jornadaSeleccionada === null) {
+        return;
+      }
+    }
+  }
+
   calculateAreasConteo() {
     const jornadaActual = this.getJornadaActual();
 
-    console.log('🔍 calculateAreasConteo - jornadaActual:', jornadaActual);
-    console.log(
-      '🔍 calculateAreasConteo - solicitudes.length:',
-      this.solicitudes.length
-    );
-    console.log('🔍 calculateAreasConteo - areas.length:', this.areas.length);
-
     if (!jornadaActual) {
-      console.warn('⚠️ No hay jornada actual, areasConConteo = []');
       this.areasConConteo = [];
       return;
     }
@@ -1057,17 +1339,12 @@ export class ReportesAnalyticsComponent implements OnInit {
       { aprobados: number; canjeados: number }
     >();
 
-    // Contar usuarios APROBADOS y CANJEADOS por área en la jornada seleccionada
     const solicitudesFiltradas = this.solicitudes.filter(
       (s) =>
         s.jornada === jornadaId &&
+        this.perteneceAlTorneoSeleccionado(s) &&
         s.areaId &&
         (s.estatus === 'aprobado' || s.estatus === 'canjeado')
-    );
-
-    console.log(
-      `🔍 Solicitudes filtradas para jornada ${jornadaId}:`,
-      solicitudesFiltradas.length
     );
 
     solicitudesFiltradas.forEach((s) => {
@@ -1083,9 +1360,6 @@ export class ReportesAnalyticsComponent implements OnInit {
       usuariosPorArea.set(s.areaId!, conteo);
     });
 
-    console.log('🔍 usuariosPorArea Map:', usuariosPorArea);
-
-    // Crear array con todas las áreas
     const todasAreas = this.areas.map((area) => {
       const conteo = usuariosPorArea.get(area.id!) || {
         aprobados: 0,
@@ -1100,97 +1374,60 @@ export class ReportesAnalyticsComponent implements OnInit {
       };
     });
 
-    console.log('🔍 Todas las áreas (antes de filtrar):', todasAreas);
-
     this.areasConConteo = todasAreas
-      .filter((area) => area.conteoUsuarios > 0) // Solo mostrar áreas con usuarios
-      .sort((a, b) => b.conteoUsuarios - a.conteoUsuarios); // Ordenar por mayor conteo
-
-    console.log(
-      '✅ areasConConteo final (después de filtrar y ordenar):',
-      this.areasConConteo
-    );
+      .filter((area) => area.conteoUsuarios > 0)
+      .sort((a, b) => b.conteoUsuarios - a.conteoUsuarios);
   }
 
   /**
-   * Construye la lista de jornadas disponibles desde los datos de usuarios
+   * Construye la lista de jornadas desde el calendario RTDB del torneo.
    */
-  construirJornadasDesdeUsuarios(): void {
-    // Obtener jornadas únicas desde los usuarios
-    const jornadasUnicas = new Set<number>();
-    this.solicitudes.forEach((s) => {
-      if (s.jornada !== undefined && s.jornada !== null) {
-        jornadasUnicas.add(s.jornada);
+  construirJornadasDesdePartidos(): void {
+    const porJornada = new Map<number, Partido>();
+    for (const partido of this.partidos) {
+      if (partido?.jornada == null) continue;
+      if (!porJornada.has(partido.jornada)) {
+        porJornada.set(partido.jornada, partido);
       }
-    });
+    }
 
-    console.log(
-      '📊 Jornadas únicas encontradas en usuarios:',
-      Array.from(jornadasUnicas)
-    );
-
-    // Construir array de jornadas con información de partidos
-    this.todasLasJornadas = Array.from(jornadasUnicas)
-      .sort((a, b) => b - a) // Ordenar descendente (más reciente primero)
-      .map((numJornada) => {
-        // Buscar el partido correspondiente
-        const partido = this.partidos.find((p) => p.jornada === numJornada);
-
-        if (partido) {
-          return {
-            jornada: numJornada,
-            equipo_local: partido.equipo_local,
-            equipo_visitante: partido.equipo_visitante,
-            estadio: partido.estadio,
-            fecha: partido.fecha,
-            hora: partido.hora,
-            activo: false, // Por defecto no activa
-          } as JornadaActiva;
-        } else {
-          // Si no hay partido, crear jornada básica
-          return {
-            jornada: numJornada,
-            equipo_local: 'Desconocido',
-            equipo_visitante: 'Desconocido',
-            estadio: '',
-            fecha: '',
-            hora: '',
-            activo: false,
-          } as JornadaActiva;
-        }
+    this.todasLasJornadas = Array.from(porJornada.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([numJornada, partido]) => {
+        const activa =
+          !!this.jornadaActiva &&
+          this.partidosService.partidoCoincideConJornada(
+            partido,
+            this.jornadaActiva
+          );
+        return {
+          jornada: numJornada,
+          equipo_local: partido.equipo_local || 'Desconocido',
+          equipo_visitante: partido.equipo_visitante || 'Desconocido',
+          estadio: partido.estadio || '',
+          fecha: partido.fecha || '',
+          hora: partido.hora || '',
+          activo: activa,
+        } as JornadaActiva;
       });
 
-    console.log('✅ Jornadas construidas:', this.todasLasJornadas);
-
-    // Si hay jornada activa, marcarla
     if (this.jornadaActiva) {
-      const jornadaActivaIndex = this.todasLasJornadas.findIndex(
-        (j) => j.jornada === this.jornadaActiva!.jornada
-      );
-      if (jornadaActivaIndex !== -1) {
-        this.todasLasJornadas[jornadaActivaIndex].activo = true;
+      this.jornadaSeleccionada = null;
+    } else if (this.todasLasJornadas.length > 0) {
+      const stillValid =
+        this.jornadaSeleccionada &&
+        this.todasLasJornadas.some(
+          (j) => j.jornada === this.jornadaSeleccionada!.jornada
+        );
+      if (!stillValid) {
+        this.jornadaSeleccionada = this.todasLasJornadas[0];
       }
+    } else {
+      this.jornadaSeleccionada = null;
     }
 
-    // Seleccionar jornada por defecto
-    if (
-      !this.jornadaSeleccionada &&
-      !this.jornadaActiva &&
-      this.todasLasJornadas.length > 0
-    ) {
-      this.jornadaSeleccionada = this.todasLasJornadas[0];
-      console.log(
-        '📌 Jornada seleccionada por defecto:',
-        this.jornadaSeleccionada
-      );
-    }
-
-    // Recalcular áreas y aplicar filtros después de construir jornadas
     this.calculateAreasConteo();
     this.applyFilters();
-    console.log(
-      '🔄 Áreas recalculadas y filtros aplicados después de construir jornadas'
-    );
   }
 
   /**
@@ -1212,10 +1449,10 @@ export class ReportesAnalyticsComponent implements OnInit {
     const jornadaActual = this.getJornadaActual();
     if (!jornadaActual) return 0;
 
-    // Contar usuarios APROBADOS y CANJEADOS (procesados)
     return this.solicitudes.filter(
       (s) =>
         s.jornada === jornadaActual.jornada &&
+        this.perteneceAlTorneoSeleccionado(s) &&
         (s.estatus === 'aprobado' || s.estatus === 'canjeado')
     ).length;
   }
@@ -1232,13 +1469,15 @@ export class ReportesAnalyticsComponent implements OnInit {
   applyFilters() {
     let filtered = [...this.solicitudes];
 
-    // 🔥 PRIMERO: Filtrar por jornada seleccionada/activa
     const jornadaActual = this.getJornadaActual();
     if (jornadaActual) {
-      filtered = filtered.filter((s) => s.jornada === jornadaActual.jornada);
+      filtered = filtered.filter(
+        (s) =>
+          s.jornada === jornadaActual.jornada &&
+          this.perteneceAlTorneoSeleccionado(s)
+      );
     }
 
-    // Filtro por búsqueda
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -1250,21 +1489,17 @@ export class ReportesAnalyticsComponent implements OnInit {
       );
     }
 
-    // Filtro por área
     if (this.filters.area) {
       filtered = filtered.filter((s) => s.areaId === this.filters.area);
     }
 
-    // Filtro por estado
     if (this.filters.estado) {
       filtered = filtered.filter((s) => s.estatus === this.filters.estado);
     }
 
-    // Filtro por función
     if (this.filters.funcion) {
       filtered = filtered.filter((s) => s.funcion === this.filters.funcion);
     }
-    // Filtro por registrante
     if (this.filters.registrante) {
       filtered = filtered.filter(
         (s) => s.registrantEmail === this.filters.registrante
@@ -1272,14 +1507,10 @@ export class ReportesAnalyticsComponent implements OnInit {
     }
 
     this.filteredSolicitudes = filtered;
-    // 🔹 REINICIAR PAGINACIÓN
     this.currentPage = 1;
     this.updatePagination();
 
-    // Actualizar estadísticas
     this.updateStatistics();
-
-    // Actualizar gráficas
     this.updateCharts();
   }
 

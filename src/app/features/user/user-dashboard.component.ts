@@ -2,6 +2,7 @@
   Component,
   inject,
   OnInit,
+  OnDestroy,
   ChangeDetectorRef,
   Inject,
 } from '@angular/core';
@@ -22,6 +23,7 @@ import {
   UserAccess,
 } from '../../core/services/usersSolicitud.service';
 import { take, filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { User } from '@angular/fire/auth';
 import { FuncionesService } from '../../core/services/funciones.service';
 import { EmpresasService } from '../../core/services/empresas.service';
@@ -29,6 +31,11 @@ import {
   JornadaActivaService,
   JornadaActiva,
 } from '../../core/services/jornadas.service';
+import {
+  PartidosService,
+  Partido,
+  TorneoTipo,
+} from '../../core/services/partidos.service';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -44,6 +51,9 @@ import { UserJornadaComponent } from '../user/user-jornada.component';
 import { UserFormEspecialComponent } from './user-formularioEspecial.component';
 import { AsignarCodigoDialogComponent } from './user-asignarPulsera.component';
 import { AreasService } from '../../core/services/areas.service';
+
+/** Margen en días alrededor del rango de fechas del torneo para filtrar createdAt */
+const TORNEO_FECHA_MARGEN_DIAS = 14;
 
 @Component({
   selector: 'app-user-dashboard',
@@ -419,7 +429,7 @@ import { AreasService } from '../../core/services/areas.service';
     `,
   ],
 })
-export class UserDashboardComponent implements OnInit {
+export class UserDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
   private usersAccessService = inject(UsersAccesService);
@@ -435,9 +445,20 @@ export class UserDashboardComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private jornadaActivaService = inject(JornadaActivaService);
+  private partidosService = inject(PartidosService);
+  private jornadaActivaSub?: Subscription;
+  private userCreatedSub?: Subscription;
+  private routerEventsSub?: Subscription;
+  private hasLoadedJornadaOnce = false;
 
   // Jornada activa
   jornadaActiva: JornadaActiva | null = null;
+
+  // Contexto del torneo de la jornada activa (año + apertura/clausura)
+  private torneoAnio: string | null = null;
+  private torneoTipo: TorneoTipo | null = null;
+  private torneoFechaInicio: Date | null = null;
+  private torneoFechaFin: Date | null = null;
 
   // ===== Filtros =====
   showFilters = false;
@@ -536,12 +557,21 @@ export class UserDashboardComponent implements OnInit {
         );
       }
 
-      // 🔥 FILTRAR POR JORNADA ACTIVA (todos los usuarios)
-      if (this.jornadaActiva) {
-        users = users.filter((u) => u.jornada === this.jornadaActiva!.jornada);
+      // Solo jornada activa del torneo resuelto (año + apertura/clausura)
+      if (this.jornadaActiva && this.torneoFechaInicio && this.torneoFechaFin) {
+        users = users.filter(
+          (u) =>
+            u.jornada === this.jornadaActiva!.jornada &&
+            this.createdAtDentroDelTorneo(u.createdAt)
+        );
         console.log(
-          `✅ Usuarios filtrados por jornada activa ${this.jornadaActiva.jornada}:`,
+          `✅ Usuarios filtrados por jornada ${this.jornadaActiva.jornada} · ${this.torneoTipo} ${this.torneoAnio}:`,
           users.length
+        );
+      } else {
+        users = [];
+        console.warn(
+          '⚠️ Sin jornada activa o torneo resuelto: cards y solicitudes quedan vacías'
         );
       }
 
@@ -724,6 +754,146 @@ export class UserDashboardComponent implements OnInit {
     }
   }
 
+  /**
+   * Escucha jornada_activa en RTDB, resuelve año/torneo y recarga usuarios.
+   */
+  loadJornadaActiva(): void {
+    this.jornadaActivaSub?.unsubscribe();
+    this.jornadaActivaSub = this.jornadaActivaService
+      .getJornadasActivas$()
+      .subscribe({
+        next: async (jornadasActivas: JornadaActiva[]) => {
+          const previousKey = this.getJornadaTorneoKey();
+          this.jornadaActiva =
+            jornadasActivas.length > 0 ? jornadasActivas[0] : null;
+
+          if (this.jornadaActiva) {
+            console.log('✅ Jornada activa:', this.jornadaActiva);
+            await this.resolverTorneoDeJornadaActiva();
+          } else {
+            console.warn('⚠️ No hay jornada activa en Realtime Database');
+            this.clearTorneoContext();
+          }
+
+          const nextKey = this.getJornadaTorneoKey();
+          if (previousKey !== nextKey || !this.hasLoadedJornadaOnce) {
+            this.hasLoadedJornadaOnce = true;
+            await this.loadUsers();
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error cargando jornada activa:', error);
+          this.jornadaActiva = null;
+          this.clearTorneoContext();
+          this.hasLoadedJornadaOnce = true;
+          void this.loadUsers();
+        },
+      });
+  }
+
+  private getJornadaTorneoKey(): string {
+    return [
+      this.jornadaActiva?.jornada ?? '',
+      this.jornadaActiva?.fecha ?? '',
+      this.torneoAnio ?? '',
+      this.torneoTipo ?? '',
+    ].join('|');
+  }
+
+  private clearTorneoContext(): void {
+    this.torneoAnio = null;
+    this.torneoTipo = null;
+    this.torneoFechaInicio = null;
+    this.torneoFechaFin = null;
+  }
+
+  /**
+   * Busca en el calendario RTDB el (año, torneo) del partido activo
+   * y calcula el rango de fechas para filtrar createdAt.
+   */
+  private async resolverTorneoDeJornadaActiva(): Promise<void> {
+    this.clearTorneoContext();
+    if (!this.jornadaActiva) return;
+
+    try {
+      const resolved =
+        await this.partidosService.resolveTorneoDeJornadaActiva(
+          this.jornadaActiva
+        );
+
+      if (!resolved) {
+        console.warn(
+          '⚠️ No se encontró coincidencia de jornada activa en el calendario de torneos'
+        );
+        return;
+      }
+
+      this.torneoAnio = resolved.year;
+      this.torneoTipo = resolved.torneo;
+      this.actualizarRangoFechasTorneo(resolved.partidos);
+      console.log(
+        `✅ Torneo resuelto: ${resolved.torneo} ${resolved.year}`,
+        this.torneoFechaInicio,
+        '→',
+        this.torneoFechaFin
+      );
+    } catch (error) {
+      console.error('❌ Error resolviendo torneo de jornada activa:', error);
+      this.clearTorneoContext();
+    }
+  }
+
+  private actualizarRangoFechasTorneo(partidos: Partido[]): void {
+    const fechas = partidos
+      .map((p) => this.partidosService.parseFechaPartido(p.fecha))
+      .filter((d): d is Date => d !== null);
+
+    if (fechas.length === 0) {
+      this.torneoFechaInicio = null;
+      this.torneoFechaFin = null;
+      return;
+    }
+
+    const min = new Date(Math.min(...fechas.map((d) => d.getTime())));
+    const max = new Date(Math.max(...fechas.map((d) => d.getTime())));
+    min.setDate(min.getDate() - TORNEO_FECHA_MARGEN_DIAS);
+    max.setDate(max.getDate() + TORNEO_FECHA_MARGEN_DIAS);
+    min.setHours(0, 0, 0, 0);
+    max.setHours(23, 59, 59, 999);
+    this.torneoFechaInicio = min;
+    this.torneoFechaFin = max;
+  }
+
+  private timestampToDate(value: unknown): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'object' && value !== null && 'toDate' in value) {
+      try {
+        return (value as { toDate: () => Date }).toDate();
+      } catch {
+        return null;
+      }
+    }
+    if (typeof value === 'object' && value !== null && 'seconds' in value) {
+      const seconds = (value as { seconds: number }).seconds;
+      return new Date(seconds * 1000);
+    }
+    if (typeof value === 'number') return new Date(value);
+    if (typeof value === 'string') {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }
+
+  /** Solo solicitudes creadas dentro del rango del torneo resuelto. */
+  private createdAtDentroDelTorneo(createdAt: unknown): boolean {
+    if (!this.torneoFechaInicio || !this.torneoFechaFin) return false;
+    const created = this.timestampToDate(createdAt);
+    if (!created) return false;
+    return created >= this.torneoFechaInicio && created <= this.torneoFechaFin;
+  }
+
   async ngOnInit() {
     // Cargar nombre del usuario
     this.authService.user$.pipe(take(1)).subscribe((user) => {
@@ -737,26 +907,27 @@ export class UserDashboardComponent implements OnInit {
       }
     });
 
-
-    // Cargar datos iniciales - PRIMERO los mapas, LUEGO los usuarios
+    // Mapas primero; usuarios se cargan al resolver la jornada activa
     await this.loadFunciones();
     await this.loadEmpresas();
     await this.loadAreas();
-    await this.loadUsers();
+    this.loadJornadaActiva();
 
-    // 👇 ESCUCHAMOS CUANDO SE CREA UN USUARIO (tiempo real)
-    this.usersAccessService.userCreated$.subscribe(async () => {
-      console.log('🔔 Evento userCreated recibido, recargando usuarios...');
+    // Escuchamos cuando se crea un usuario (tiempo real)
+    this.userCreatedSub = this.usersAccessService.userCreated$.subscribe(
+      async () => {
+        console.log('🔔 Evento userCreated recibido, recargando usuarios...');
 
-      // Esperar un momento para que la Cloud Function genere el PDF
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Esperar un momento para que la Cloud Function genere el PDF
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await this.loadUsers();
-      console.log('✅ Usuarios recargados después de creación');
-    });
+        await this.loadUsers();
+        console.log('✅ Usuarios recargados después de creación');
+      }
+    );
 
     // Suscribirse a eventos de navegación para recargar datos
-    this.router.events
+    this.routerEventsSub = this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe(async (event: any) => {
         if (
@@ -764,13 +935,18 @@ export class UserDashboardComponent implements OnInit {
           event.url.startsWith('/user?') ||
           event.url.startsWith('/user#')
         ) {
-          // Recargar mapas primero, luego usuarios
           await this.loadFunciones();
           await this.loadEmpresas();
           await this.loadAreas();
           await this.loadUsers();
         }
       });
+  }
+
+  ngOnDestroy(): void {
+    this.jornadaActivaSub?.unsubscribe();
+    this.userCreatedSub?.unsubscribe();
+    this.routerEventsSub?.unsubscribe();
   }
 
   goToRegistro() {

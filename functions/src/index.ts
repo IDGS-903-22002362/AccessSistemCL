@@ -131,7 +131,7 @@ async function getEscudoBuffer(equipo: string): Promise<Buffer | null> {
       const isLast = attempt === maxAttempts;
       console.error(
         `Error descargando escudo ${archivo}` +
-          ` (intento ${attempt}/${maxAttempts}):`,
+        ` (intento ${attempt}/${maxAttempts}):`,
         error
       );
       if (isLast) {
@@ -851,7 +851,7 @@ async function generatePDF(
               .fillColor(colors.text)
               .text(
                 `${relatedData.jornadaData.equipo_local} vs ` +
-                  `${relatedData.jornadaData.equipo_visitante}`,
+                `${relatedData.jornadaData.equipo_visitante}`,
                 leftX + padding,
                 currentY,
                 {width: leftWidth - padding * 2, align: "center"}
@@ -963,7 +963,7 @@ async function generatePDF(
           const avisos = [
             "El presente QR no garantiza el acceso al estadio.",
             "Para ingresar es indispensable contar con pulsera y " +
-              "realizar el proceso en el area de acreditacion.",
+            "realizar el proceso en el area de acreditacion.",
             "Este QR:",
             "No es un boleto.",
             "No asegura lugar en tribuna.",
@@ -1054,7 +1054,7 @@ async function sendEmailNotification(
   let latestUserData = userData;
 
   try {
-    const BREVO_API_KEY = process.env.BREVO_API_KEY;
+    const BREVO_API_KEY = process.env.BREVO_API_KEY?.trim();
 
     if (!BREVO_API_KEY) {
       console.error(
@@ -1191,7 +1191,7 @@ async function sendEmailNotification(
 
     const payload: BrevoPayload = {
       sender: {
-        email: "sistemasleonfc@gmail.com",
+        email: "servicios@mail-clubleon.mx",
         name: "FUERZA DEPORTIVA DEL LEON",
       },
       to: [{email: latestUserData.email, name: fullName}],
@@ -1293,7 +1293,7 @@ async function resendWithExistingPDF(
   userId: string,
   pdfUrl: string
 ): Promise<void> {
-  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const BREVO_API_KEY = process.env.BREVO_API_KEY?.trim();
 
   if (!BREVO_API_KEY) {
     throw new Error("Brevo API Key no configurada");
@@ -1323,7 +1323,7 @@ async function resendWithExistingPDF(
 
   const payload: BrevoPayload = {
     sender: {
-      email: "sistemasleonfc@gmail.com",
+      email: "servicios@mail-clubleon.mx",
       name: "FUERZA DEPORTIVA DEL LEON",
     },
     to: [{email: userData.email, name: fullName}],
@@ -1377,7 +1377,7 @@ async function sendRejectionEmail(
 
   const payload: BrevoPayload = {
     sender: {
-      email: "sistemasleonfc@gmail.com",
+      email: "servicios@mail-clubleon.mx",
       name: "FUERZA DEPORTIVA DEL LEON",
     },
     to: [{email: userData.email, name: fullName}],
@@ -2180,7 +2180,7 @@ async function sendVisitaEmail(
   fileName: string,
   pdfUrl: string
 ): Promise<void> {
-  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const BREVO_API_KEY = process.env.BREVO_API_KEY?.trim();
 
   if (!BREVO_API_KEY) {
     throw new Error("BREVO_API_KEY no configurada");
@@ -2190,7 +2190,7 @@ async function sendVisitaEmail(
 
   const payload: BrevoPayload = {
     sender: {
-      email: "sistemasleonfc@gmail.com",
+      email: "servicios@mail-clubleon.mx",
       name: "FUERZA DEPORTIVA DEL LEON",
     },
     to: [{email: visitaData.correo, name: visitaData.nombre}],

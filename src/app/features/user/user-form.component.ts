@@ -465,8 +465,10 @@ import { take } from 'rxjs/operators';
                   formControlName="telefono"
                   type="tel"
                   inputmode="numeric"
+                  maxlength="10"
                   pattern="[0-9]*"
                   (keypress)="onlyNumbers($event)"
+                  (input)="onTelefonoInput($event)"
                 />
                 <mat-icon matPrefix class="text-gray-400 mr-2">phone</mat-icon>
                 <mat-error
@@ -475,7 +477,7 @@ import { take } from 'rxjs/operators';
                     manualForm.get('telefono')?.touched
                   "
                 >
-                  El teléfono es requerido
+                  El teléfono debe tener exactamente 10 dígitos
                 </mat-error>
               </mat-form-field>
 
@@ -1233,9 +1235,7 @@ export class UserFormComponent implements OnInit {
       '',
       [
         Validators.required,
-        Validators.pattern('^[0-9]+$'), // solo números
-        Validators.minLength(10), // opcional (teléfono típico MX)
-        Validators.maxLength(10), // opcional
+        Validators.pattern(/^\d{10}$/),
       ],
     ],
     email: ['', [Validators.required, Validators.email]],
@@ -1253,10 +1253,12 @@ export class UserFormComponent implements OnInit {
         await this.empresasService.getEmpresasPorUsuarioLogueado();
 
 
-      this.empresas = empresasBD.filter(
-        e =>
-          e.id !== this.EMPRESA_OTRA_ID &&
-          e.nombre?.toUpperCase() !== 'OTRA'
+      this.empresas = this.sortByNombre(
+        empresasBD.filter(
+          e =>
+            e.id !== this.EMPRESA_OTRA_ID &&
+            e.nombre?.toUpperCase() !== 'OTRA'
+        )
       );
 
     } catch (error) {
@@ -1292,7 +1294,9 @@ export class UserFormComponent implements OnInit {
       return;
     }
 
-    this.areas = await this.areasService.getAreasByIds(userData.areaIds);
+    this.areas = this.sortByNombre(
+      await this.areasService.getAreasByIds(userData.areaIds)
+    );
   }
 
   async loadPatrocinadoresByUsuario() {
@@ -1311,7 +1315,17 @@ export class UserFormComponent implements OnInit {
       return;
     }
 
-    this.areas = await this.areasService.getAreasByIds(userData.areaIds);
+    this.areas = this.sortByNombre(
+      await this.areasService.getAreasByIds(userData.areaIds)
+    );
+  }
+
+  private sortByNombre<T extends { nombre?: string }>(items: T[]): T[] {
+    return [...items].sort((a, b) =>
+      (a.nombre || '')
+        .toLowerCase()
+        .localeCompare((b.nombre || '').toLowerCase(), 'es')
+    );
   }
 
   async ngOnInit() {
@@ -1359,16 +1373,41 @@ export class UserFormComponent implements OnInit {
 
   onlyNumbers(event: KeyboardEvent) {
     const charCode = event.which ? event.which : event.keyCode;
+    const input = event.target as HTMLInputElement;
 
-    // Permite solo números (0–9)
+    // Permite solo números (0–9) y máximo 10 dígitos
     if (charCode < 48 || charCode > 57) {
+      event.preventDefault();
+      return;
+    }
+
+    if (input.value.length >= 10 && !this.hasTextSelection(input)) {
       event.preventDefault();
     }
   }
 
+  onTelefonoInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digitsOnly = input.value.replace(/\D/g, '').slice(0, 10);
+    if (input.value !== digitsOnly) {
+      input.value = digitsOnly;
+    }
+    this.manualForm
+      .get('telefono')
+      ?.setValue(digitsOnly, { emitEvent: false });
+  }
+
+  private hasTextSelection(input: HTMLInputElement): boolean {
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    return start !== end;
+  }
+
   async loadFunciones() {
     try {
-      this.funciones = await this.funcionesService.getFunciones();
+      this.funciones = this.sortByNombre(
+        await this.funcionesService.getFunciones()
+      );
       console.log('Funciones cargadas:', this.funciones);
     } catch (error) {
       console.error('Error cargando funciones:', error);
